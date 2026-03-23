@@ -61,6 +61,9 @@ A22/
 ├─ compose.remote.yaml
 ├─ README.md
 ├─ ARCHITECTURE.md
+├─ System_Design/
+│  ├─ version1/
+│  └─ version2/
 ├─ local/
 │  ├─ frontend/
 │  ├─ edge-backend/
@@ -154,6 +157,12 @@ uv sync
 uv run uvicorn app:app --host 127.0.0.1 --port 9000
 ```
 
+当前已验证：
+
+- 远端 `uvicorn` 可在 `127.0.0.1:9000` 成功启动
+- 本地 SSH 隧道可访问 `127.0.0.1:19000/health`
+- 本地 SSH 隧道可访问 `127.0.0.1:19000/chat`
+
 如果远端后续拿到 Docker 权限，再切回：
 
 ```bash
@@ -228,12 +237,22 @@ curl -X POST http://localhost/api/chat -H "Content-Type: application/json" \
 - `http://localhost:8000/health` 可访问
 - `http://localhost/api/chat` 可访问
 - `docker compose` 已可作为本地多服务管理入口
+- 远端 `remote/orchestrator` 已可通过 `uv` 运行
+- SSH 隧道下的 `http://127.0.0.1:19000/health` 可访问
+- SSH 隧道下的 `http://127.0.0.1:19000/chat` 可访问
+
+补充说明：
+
+- 当前已经完成“本地到远端 orchestrator”的通信验证
+- 当前 `local/edge-backend` 仍然是**本地 mock 返回**
+- 因此完整业务链路 `frontend -> edge-backend -> remote/orchestrator -> frontend` 还没有全部接上
 
 ## 10. 下一步开发方向
 下一阶段将基于当前骨架继续补齐以下功能：
 
-- 前端渲染界面优化
-- 前端输入信号接入
-- 前后端本地闭环联调
-- mock 远程 server 请求与返回
-- 预留真实远程推理接口
+- 将 `local/edge-backend` 改成真实调用 `CLOUD_API_BASE`
+- 前端渲染界面优化与聊天区域设计
+- 前端输入信号接入与消息状态管理
+- 消息格式、发送接收接口与边缘侧数据处理
+- 数字人形象控制与接收消息后的动作驱动逻辑
+- 后续逐步替换远端 mock orchestrator 为真实推理模块
