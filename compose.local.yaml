@@ -17,6 +17,7 @@ services:
     working_dir: /app
     volumes:
       - ./local/edge-backend:/app
+      - ./shared:/shared
       - a22_logs:/logs
       - a22_data:/data
     command: bash -lc "pip install -r requirements.txt && uvicorn app:app --host 0.0.0.0 --port 8000"
