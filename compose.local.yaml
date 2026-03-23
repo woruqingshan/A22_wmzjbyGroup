@@ -3,7 +3,7 @@ services:
     image: node:20-bookworm-slim
     working_dir: /app
     volumes:
-      - ./frontend:/app
+      - ./local/frontend:/app
     command: bash -lc "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
     ports:
       - "3000:3000"
@@ -16,7 +16,7 @@ services:
     image: python:3.11-slim-bookworm
     working_dir: /app
     volumes:
-      - ./edge-backend:/app
+      - ./local/edge-backend:/app
       - a22_logs:/logs
       - a22_data:/data
     command: bash -lc "pip install -r requirements.txt && uvicorn app:app --host 0.0.0.0 --port 8000"

@@ -1,0 +1,10 @@
+{
+  "server_status": "ok",
+  "reply_text": "我在，你可以慢慢说。",
+  "emotion_style": "gentle",
+  "avatar_action": {
+    "facial_expression": "soft_concern",
+    "head_motion": "slow_nod"
+  },
+  "server_ts": 1710000001
+}

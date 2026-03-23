@@ -58,10 +58,18 @@
 A22/
 ├─ compose.yaml
 ├─ compose.local.yaml
+├─ compose.remote.yaml
 ├─ README.md
-├─ frontend/
-├─ edge-backend/
+├─ ARCHITECTURE.md
+├─ local/
+│  ├─ frontend/
+│  ├─ edge-backend/
+│  └─ README.md
+├─ remote/
+│  └─ orchestrator/
 ├─ shared/
+│  ├─ contracts/
+│  └─ README.md
 ├─ infra/nginx/
 ├─ logs/
 └─ data/
@@ -132,6 +140,18 @@ docker compose -f compose.yaml -f compose.local.yaml ps
 docker compose -f compose.yaml -f compose.local.yaml logs -f
 ```
 
+### 7.6 远端 orchestrator（可选，在服务器上）
+
+当远端已安装 Docker 时，可在**服务器项目根目录**执行：
+
+```bash
+docker compose -f compose.yaml -f compose.remote.yaml up -d orchestrator
+```
+
+无 Docker 时可用 `venv + uvicorn`，见 `remote/orchestrator/README.md`。
+
+HTTP 契约见 `shared/contracts/api_v1.md`。
+
 ## 8. 已有 yml 情况下的复现步骤
 如果仓库中已经存在 `compose.yaml` 和 `compose.local.yaml`，其他开发者复现本地环境时只需要完成以下操作。
 
@@ -174,7 +194,8 @@ docker compose -f compose.yaml -f compose.local.yaml up -d
 ```bash
 docker compose -f compose.yaml -f compose.local.yaml ps
 curl http://localhost:8000/health
-curl -X POST http://localhost/api/chat -H "Content-Type: application/json" -d '{"text":"hello"}'
+curl -X POST http://localhost/api/chat -H "Content-Type: application/json" \
+  -d '{"session_id":"demo-001","turn_id":1,"user_text":"hello","input_type":"text"}'
 ```
 
 ### 8.6 浏览器访问

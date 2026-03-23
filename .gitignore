@@ -1,6 +1,6 @@
 # Node
-frontend/node_modules/
-frontend/dist/
+local/frontend/node_modules/
+local/frontend/dist/
 
 # Python
 __pycache__/

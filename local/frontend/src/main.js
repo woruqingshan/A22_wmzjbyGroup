@@ -16,12 +16,20 @@ document.getElementById("send").addEventListener("click", async () => {
 
   output.textContent = "Loading...";
 
+  const payload = {
+    session_id: "demo-001",
+    turn_id: 1,
+    user_text: text,
+    input_type: "text",
+    client_ts: Math.floor(Date.now() / 1000),
+  };
+
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ text })
+    body: JSON.stringify(payload),
   });
 
   const data = await res.json();

@@ -1,0 +1,20 @@
+# Remote stack: run on the lab server (or locally for dry-run).
+# Merge with compose.yaml so network and project name stay consistent:
+#   docker compose -f compose.yaml -f compose.remote.yaml up -d
+#
+# Bind orchestrator to all interfaces only if protected by firewall or VPN.
+# For SSH tunnel demos, run orchestrator on the server with --host 127.0.0.1 instead.
+
+services:
+  orchestrator:
+    image: python:3.11-slim-bookworm
+    working_dir: /app
+    volumes:
+      - ./remote/orchestrator:/app
+    command: bash -lc "pip install -r requirements.txt && uvicorn app:app --host 0.0.0.0 --port 9000"
+    ports:
+      - "9000:9000"
+    environment:
+      ORCHESTRATOR_ENV: dev
+    networks:
+      - a22-net
