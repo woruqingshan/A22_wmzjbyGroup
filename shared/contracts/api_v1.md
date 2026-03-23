@@ -45,6 +45,9 @@ See `chat_request.example.json`.
 | `avatar_action.facial_expression` | string | yes | Expression token. |
 | `avatar_action.head_motion` | string | yes | Head motion token. |
 | `server_ts` | integer | no | Unix epoch seconds on server when the reply was produced. |
+| `response_source` | string | no | Provider or fallback source, e.g. `mock`, `fallback:provider`. |
+| `context_summary` | string | no | Short summary of recent session context used for the reply. |
+| `reasoning_hint` | string | no | Lightweight debug hint for orchestration behavior. |
 
 ### Example
 
@@ -59,6 +62,14 @@ See `chat_response.example.json`.
 | `status` | string | `ok` when service is up. |
 
 Optional: `server_time` ISO8601 string for debugging.
+
+Optional extensions:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `orchestrator_mode` | string | Current orchestration mode, e.g. `llm-adapter-ready`. |
+| `llm_provider` | string | Active provider name configured on remote. |
+| `llm_model` | string | Active model name configured on remote. |
 
 ## Notes
 

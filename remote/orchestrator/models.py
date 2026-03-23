@@ -1,29 +1,42 @@
+import sys
+from pathlib import Path
+
 from pydantic import BaseModel, Field
 
+SHARED_PATH_CANDIDATES = [
+    Path("/shared"),
+    Path(__file__).resolve().parents[2] / "shared" if len(Path(__file__).resolve().parents) > 2 else None,
+]
 
-class ChatRequest(BaseModel):
-    session_id: str = Field(..., min_length=1)
-    turn_id: int = Field(..., ge=1)
-    user_text: str = Field(default="")
-    input_type: str = Field(default="text")
-    client_ts: int | None = None
-    audio_base64: str | None = None
-    audio_format: str | None = None
-    audio_duration_ms: int | None = Field(default=None, ge=0)
+for candidate in SHARED_PATH_CANDIDATES:
+    if candidate and candidate.exists() and str(candidate) not in sys.path:
+        sys.path.append(str(candidate))
+
+from contracts.schemas import (  # noqa: E402
+    AvatarActionSchema,
+    ChatRequestSchema,
+    ChatResponseSchema,
+    ErrorResponseSchema,
+)
 
 
-class AvatarAction(BaseModel):
-    facial_expression: str
-    head_motion: str
+class ChatRequest(ChatRequestSchema):
+    pass
 
 
-class ChatResponse(BaseModel):
-    server_status: str
-    reply_text: str
-    emotion_style: str
-    avatar_action: AvatarAction
-    server_ts: int | None = None
+class ContextMessage(BaseModel):
+    role: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1)
+    turn_id: int | None = Field(default=None, ge=1)
     input_mode: str | None = None
+
+
+class AvatarAction(AvatarActionSchema):
+    pass
+
+
+class ChatResponse(ChatResponseSchema):
+    avatar_action: AvatarAction
     reply_audio_url: str | None = None
 
 
@@ -31,7 +44,9 @@ class HealthResponse(BaseModel):
     status: str
     server_time: str
     orchestrator_mode: str
+    llm_provider: str
+    llm_model: str
 
 
-class ErrorResponse(BaseModel):
-    detail: str
+class ErrorResponse(ErrorResponseSchema):
+    pass

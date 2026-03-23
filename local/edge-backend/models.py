@@ -1,4 +1,23 @@
+import sys
+from pathlib import Path
+
 from pydantic import BaseModel, Field
+
+SHARED_PATH_CANDIDATES = [
+    Path("/shared"),
+    Path(__file__).resolve().parents[2] / "shared" if len(Path(__file__).resolve().parents) > 2 else None,
+]
+
+for candidate in SHARED_PATH_CANDIDATES:
+    if candidate and candidate.exists() and str(candidate) not in sys.path:
+        sys.path.append(str(candidate))
+
+from contracts.schemas import (  # noqa: E402
+    AvatarActionSchema,
+    ChatRequestSchema,
+    ChatResponseSchema,
+    ErrorResponseSchema,
+)
 
 
 class ChatRequest(BaseModel):
@@ -23,22 +42,16 @@ class RemoteChatRequest(BaseModel):
     audio_duration_ms: int | None = Field(default=None, ge=0)
 
 
-class AvatarAction(BaseModel):
-    facial_expression: str
-    head_motion: str
+class AvatarAction(AvatarActionSchema):
+    pass
 
 
-class ChatResponse(BaseModel):
-    server_status: str
-    reply_text: str
-    emotion_style: str
+class ChatResponse(ChatResponseSchema):
     avatar_action: AvatarAction
-    server_ts: int | None = None
-    input_mode: str | None = None
 
 
-class ErrorResponse(BaseModel):
-    detail: str
+class ErrorResponse(ErrorResponseSchema):
+    pass
 
 
 class HealthResponse(BaseModel):
