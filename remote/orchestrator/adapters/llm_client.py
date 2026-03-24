@@ -1,5 +1,7 @@
 from typing import Protocol
 
+import httpx
+
 from config import settings
 from models import ContextMessage
 
@@ -79,6 +81,52 @@ class MockLLMProvider:
         )
 
 
+class VllmProvider:
+    provider_name = "qwen_vllm"
+
+    async def complete(self, request: LLMRequest) -> LLMResult:
+        url = f"{settings.llm_api_base}/chat/completions"
+
+        messages = [{"role": "system", "content": request.system_prompt}]
+
+        # 把最近上下文拼进去
+        for msg in request.context_messages:
+            messages.append(
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                }
+            )
+
+        # 当前用户输入
+        messages.append({"role": "user", "content": request.user_text})
+
+        payload = {
+            "model": settings.llm_model,
+            "messages": messages,
+            "temperature": settings.llm_temperature,
+            "max_tokens": settings.llm_max_tokens,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.llm_api_key}",
+        }
+
+        async with httpx.AsyncClient(timeout=settings.llm_request_timeout_seconds) as client:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+
+        data = response.json()
+        reply_text = data["choices"][0]["message"]["content"].strip()
+
+        return LLMResult(
+            reply_text=reply_text,
+            response_source="qwen_vllm",
+            reasoning_hint="live-vllm-response",
+        )
+
+
 class FallbackLLMProvider:
     provider_name = "mock-fallback"
 
@@ -98,16 +146,26 @@ class LLMClient:
         self.provider_name = settings.llm_provider
         self.model_name = settings.llm_model
         self._provider = self._build_provider()
+        self._fallback = MockLLMProvider()
 
     def _build_provider(self) -> BaseLLMProvider:
         if settings.llm_provider == "mock":
             return MockLLMProvider()
 
-        # Keep the adapter provider-neutral now and fall back until a real provider is configured.
+        if settings.llm_provider in {"qwen", "qwen_vllm", "vllm"}:
+            return VllmProvider()
+
         return FallbackLLMProvider(settings.llm_provider)
 
     async def generate_reply(self, request: LLMRequest) -> LLMResult:
-        return await self._provider.complete(request)
+        try:
+            return await self._provider.complete(request)
+        except Exception:
+            # 真 LLM 调用失败时回退到 mock
+            result = await self._fallback.complete(request)
+            result.response_source = f"fallback:{self.provider_name}"
+            result.reasoning_hint = "runtime-fallback-to-mock"
+            return result
 
 
 llm_client = LLMClient()
