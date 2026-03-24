@@ -245,13 +245,13 @@ export LLM_REQUEST_TIMEOUT_SECONDS=60
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
 source .venv/bin/activate
-uv run uvicorn app:app --host 127.0.0.1 --port 9000
+uv run uvicorn app:app --host 127.0.0.1 --port 19000
 ```
 
 启动后可在服务器本机验证：
 
 ```bash
-curl http://127.0.0.1:9000/health
+curl http://127.0.0.1:19000/health
 ```
 
 说明：
@@ -303,18 +303,18 @@ export LLM_MODEL=Qwen2.5-7B-Instruct
 export LLM_API_BASE=http://127.0.0.1:8000/v1
 export LLM_API_KEY=EMPTY
 export LLM_REQUEST_TIMEOUT_SECONDS=60
-uv run uvicorn app:app --host 127.0.0.1 --port 9000
+uv run uvicorn app:app --host 127.0.0.1 --port 19000
 ```
 
 #### 7.7.4 WSL 侧建立 SSH 隧道
 
 ```bash
-ssh -N -L 19000:127.0.0.1:9000 <server_user>@<server_host>
+ssh -N -L 19000:127.0.0.1:19000 <server_user>@<server_host>
 ```
 
 其中：
 
-- 本地 `19000` 映射到远端 `orchestrator` 的 `9000`
+- 本地 `19000` 映射到远端 `orchestrator` 的 `19000`
 - 本地应用继续通过 `CLOUD_API_BASE=http://127.0.0.1:19000` 访问远端服务
 
 #### 7.7.5 全链路验证

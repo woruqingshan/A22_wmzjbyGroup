@@ -8,7 +8,7 @@
 
 - 本地 `local/frontend`、`local/edge-backend`、`nginx` 的 Docker Compose 骨架
 - 远端 `remote/orchestrator` 的 `uv + Python 3.11 + uvicorn` 运行方式
-- SSH 隧道转发：本地 `127.0.0.1:19000` -> 远端 `127.0.0.1:9000`
+- SSH 隧道转发：本地 `127.0.0.1:19000` -> 远端 `127.0.0.1:19000`
 - `GET /health` 与 `POST /chat` 的 v0 协议验证
 
 当前系统**尚未完成**：
@@ -195,7 +195,7 @@ frontend
 
 - `uv`
 - `remote/orchestrator/.venv`
-- `uv run uvicorn app:app --host 127.0.0.1 --port 9000`
+- `uv run uvicorn app:app --host 127.0.0.1 --port 19000`
 
 这是一种**部署降级**而不是**架构变更**：
 

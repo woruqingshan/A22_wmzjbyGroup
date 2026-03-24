@@ -28,7 +28,7 @@ CLOUD_API_BASE: http://replace-with-remote-server
 如果你已经把 SSH 隧道开在本机：
 
 ```text
-127.0.0.1:19000 -> remote 127.0.0.1:9000
+127.0.0.1:19000 -> remote 127.0.0.1:19000
 ```
 
 那么推荐把 `compose.local.yaml` 里的 `CLOUD_API_BASE` 改成：
@@ -53,13 +53,13 @@ CLOUD_API_BASE: http://host.docker.internal:19000
 ```bash
 cd /home/siyuen/docker_ws/A22/remote/orchestrator
 source .venv/bin/activate
-uv run uvicorn app:app --host 127.0.0.1 --port 9000
+uv run uvicorn app:app --host 127.0.0.1 --port 19000
 ```
 
 在本地 WSL 开 SSH 隧道：
 
 ```bash
-ssh -N -L 19000:127.0.0.1:9000 <your-remote-user>@<your-remote-host>
+ssh -N -L 19000:127.0.0.1:19000 <your-remote-user>@<your-remote-host>
 ```
 
 #### 方案 B：本机 dry-run remote
@@ -73,7 +73,7 @@ docker compose -f compose.yaml -f compose.remote.yaml up -d orchestrator
 如果用这个方案，你可以把 `CLOUD_API_BASE` 直接改成：
 
 ```yaml
-CLOUD_API_BASE: http://host.docker.internal:9000
+CLOUD_API_BASE: http://host.docker.internal:19000
 ```
 
 ## 3. 启动 local

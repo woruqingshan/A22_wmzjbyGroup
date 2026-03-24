@@ -46,8 +46,11 @@ uv sync
 ```bash
 cd remote/orchestrator
 source .venv/bin/activate
-uv run uvicorn app:app --host 127.0.0.1 --port 9000
+uv run uvicorn app:app --host 127.0.0.1 --port 19000
 ```
+
+run llm
+python -m vllm.entrypoints.openai.api_server   --host 127.0.0.1   --port 8000   --model /data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct   --served-model-name Qwen2.5-7B-Instruct   --dtype auto   --gpu-memory-utilization 0.80   --trust-remote-code
 
 Bind to `127.0.0.1` when exposing only via SSH tunnel from your laptop.
 
@@ -56,8 +59,8 @@ Bind to `127.0.0.1` when exposing only via SSH tunnel from your laptop.
 On the remote host itself:
 
 ```bash
-curl http://127.0.0.1:9000/health
-curl -X POST http://127.0.0.1:9000/chat \
+curl http://127.0.0.1:19000/health
+curl -X POST http://127.0.0.1:19000/chat \
   -H "Content-Type: application/json" \
   -d '{"session_id":"demo-001","turn_id":1,"user_text":"hello","input_type":"text"}'
 ```
@@ -76,3 +79,28 @@ docker compose -f compose.yaml -f compose.remote.yaml up -d orchestrator
 - `POST /chat`
 
 See `../../shared/contracts/` for JSON shapes.
+
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
+source .venv/bin/activate
+CUDA_VISIBLE_DEVICES=2 vllm serve /data/zifeng/siyuan/A22/models/Qwen2.5-7B-Instruct \
+  --served-model-name Qwen2.5-7B-Instruct \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --gpu-memory-utilization 0.90 \
+  --max-model-len 8192
+
+
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/orchestrator
+source .venv/bin/activate
+export LLM_PROVIDER=qwen
+export LLM_MODEL=Qwen2.5-7B-Instruct
+export LLM_API_BASE=http://127.0.0.1:8000/v1
+export LLM_API_KEY=EMPTY
+export LLM_REQUEST_TIMEOUT_SECONDS=60
+export LLM_TEMPERATURE=0.4
+export LLM_MAX_TOKENS=256
+uv run uvicorn app:app --host 127.0.0.1 --port 19000
+
+ss -ltnp | grep 8000
+ps -ef | grep "uvicorn app:app --host 127.0.0.1 --port 19000"

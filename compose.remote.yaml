@@ -12,9 +12,9 @@ services:
     volumes:
       - ./remote/orchestrator:/app
       - ./shared:/shared
-    command: bash -lc "pip install -r requirements.txt && uvicorn app:app --host 0.0.0.0 --port 9000"
+    command: bash -lc "pip install -r requirements.txt && uvicorn app:app --host 0.0.0.0 --port 19000"
     ports:
-      - "9000:9000"
+      - "19000:19000"
     environment:
       ORCHESTRATOR_ENV: dev
     networks:
