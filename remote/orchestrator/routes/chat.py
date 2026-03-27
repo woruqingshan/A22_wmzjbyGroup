@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from models import ChatRequest, ChatResponse, ErrorResponse
+from services.observability import orchestrator_observability
 from services.dialog_service import dialog_service
 
 router = APIRouter()
@@ -17,4 +18,15 @@ async def chat(request: ChatRequest) -> ChatResponse:
     if not has_text and not has_audio:
         raise HTTPException(status_code=400, detail="Either user_text or audio input is required.")
 
+    orchestrator_observability.log_chat_request_received(
+        request.session_id,
+        request.turn_id,
+        {
+            "input_type": request.input_type,
+            "text_source": request.text_source,
+            "alignment_mode": request.alignment_mode,
+            "has_audio": has_audio,
+            "has_vision": bool(request.vision_features),
+        },
+    )
     return await dialog_service.build_reply(request)

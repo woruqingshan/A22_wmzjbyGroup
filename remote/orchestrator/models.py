@@ -13,15 +13,32 @@ for candidate in SHARED_PATH_CANDIDATES:
         sys.path.append(str(candidate))
 
 from contracts.schemas import (  # noqa: E402
+    AudioMetaSchema,
     AvatarActionSchema,
     ChatRequestSchema,
     ChatResponseSchema,
     ErrorResponseSchema,
+    SpeechFeaturesSchema,
+    VisionFeaturesSchema,
 )
 
 
-class ChatRequest(ChatRequestSchema):
+class AudioMeta(AudioMetaSchema):
     pass
+
+
+class SpeechFeatures(SpeechFeaturesSchema):
+    pass
+
+
+class VisionFeatures(VisionFeaturesSchema):
+    pass
+
+
+class ChatRequest(ChatRequestSchema):
+    audio_meta: AudioMeta | None = None
+    speech_features: SpeechFeatures | None = None
+    vision_features: VisionFeatures | None = None
 
 
 class ContextMessage(BaseModel):

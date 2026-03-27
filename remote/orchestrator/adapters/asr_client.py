@@ -5,6 +5,8 @@ class ASRClient:
     async def transcribe(self, request: ChatRequest) -> str:
         if request.user_text.strip():
             return request.user_text.strip()
+        if request.client_asr_text and request.client_asr_text.strip():
+            return request.client_asr_text.strip()
         if request.audio_base64:
             return "I received your audio message."
         return ""

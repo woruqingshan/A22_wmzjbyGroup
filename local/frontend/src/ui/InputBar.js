@@ -1,31 +1,5 @@
-async function blobToBase64(blob) {
-  return await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("Audio conversion failed."));
-        return;
-      }
-      resolve(result.split(",")[1] || "");
-    };
-    reader.onerror = () => reject(new Error("Audio conversion failed."));
-    reader.readAsDataURL(blob);
-  });
-}
-
-function simplifyAudioFormat(mimeType) {
-  if (mimeType.includes("webm")) {
-    return "webm";
-  }
-  if (mimeType.includes("ogg")) {
-    return "ogg";
-  }
-  if (mimeType.includes("wav")) {
-    return "wav";
-  }
-  return "unknown";
-}
+import { createAudioTurnRecorder } from "../audio/audioTurnRecorder";
+import { VOICE_TURN_STATE } from "../audio/recorderStates";
 
 export function createInputBar({ onSend, onStatusChange }) {
   const element = document.createElement("section");
@@ -42,98 +16,125 @@ export function createInputBar({ onSend, onStatusChange }) {
       <label class="field-label" for="message-box">Text message</label>
       <textarea id="message-box" rows="5" placeholder="Type a supportive conversation prompt or record audio."></textarea>
       <div class="input-actions">
-        <button type="button" class="secondary-button" data-role="record-button">Start audio capture</button>
         <button type="submit" class="primary-button" data-role="send-button">Send turn</button>
       </div>
-      <div class="audio-attachment" data-role="audio-attachment">No audio attached.</div>
+      <button type="button" class="audio-turn-button" data-role="voice-button" aria-pressed="false">
+        <span class="audio-turn-title" data-role="voice-title">Start voice input</span>
+        <span class="audio-turn-meta" data-role="voice-meta">Use the microphone for one audio-only turn. Click again to stop and submit.</span>
+      </button>
     </form>
   `;
 
   const form = element.querySelector(".input-form");
   const messageBox = element.querySelector("#message-box");
-  const recordButton = element.querySelector('[data-role="record-button"]');
   const sendButton = element.querySelector('[data-role="send-button"]');
-  const attachment = element.querySelector('[data-role="audio-attachment"]');
+  const voiceButton = element.querySelector('[data-role="voice-button"]');
+  const voiceTitle = element.querySelector('[data-role="voice-title"]');
+  const voiceMeta = element.querySelector('[data-role="voice-meta"]');
 
-  let mediaRecorder = null;
-  let mediaStream = null;
-  let chunks = [];
-  let recordingStartedAt = 0;
-  let pendingAudio = null;
-  let isRecording = false;
+  const recorder = createAudioTurnRecorder();
 
-  async function startRecording() {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      onStatusChange("Audio capture is not supported in this browser.");
-      return;
-    }
+  let isBusy = false;
+  let voiceTurnState = VOICE_TURN_STATE.IDLE;
+  let preservedDraft = "";
 
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(mediaStream);
-    chunks = [];
-    recordingStartedAt = Date.now();
-    isRecording = true;
+  function syncControls() {
+    const textLocked = isBusy || voiceTurnState !== VOICE_TURN_STATE.IDLE;
 
-    mediaRecorder.addEventListener("dataavailable", (event) => {
-      if (event.data.size > 0) {
-        chunks.push(event.data);
-      }
-    });
-
-    mediaRecorder.addEventListener("stop", async () => {
-      const mimeType = mediaRecorder.mimeType || "audio/webm";
-      const blob = new Blob(chunks, { type: mimeType });
-      pendingAudio = {
-        audio_base64: await blobToBase64(blob),
-        audio_format: simplifyAudioFormat(mimeType),
-        audio_duration_ms: Date.now() - recordingStartedAt,
-      };
-      attachment.textContent = `Audio attached: ${pendingAudio.audio_format} · ${pendingAudio.audio_duration_ms} ms`;
-      onStatusChange("Audio clip attached and ready to send.");
-      mediaStream.getTracks().forEach((track) => track.stop());
-      mediaStream = null;
-    });
-
-    mediaRecorder.start();
-    recordButton.textContent = "Stop audio capture";
-    attachment.textContent = "Recording audio...";
-    onStatusChange("Recording audio from microphone.");
-  }
-
-  function stopRecording() {
-    if (!mediaRecorder || !isRecording) {
-      return;
-    }
-
-    isRecording = false;
-    mediaRecorder.stop();
-    recordButton.textContent = "Start audio capture";
-  }
-
-  function setBusy(isBusy) {
-    messageBox.disabled = isBusy;
-    recordButton.disabled = isBusy;
-    sendButton.disabled = isBusy;
+    messageBox.disabled = textLocked;
+    sendButton.disabled = textLocked;
     sendButton.textContent = isBusy ? "Sending..." : "Send turn";
+
+    voiceButton.disabled = voiceTurnState === VOICE_TURN_STATE.PROCESSING
+      || (isBusy && voiceTurnState !== VOICE_TURN_STATE.RECORDING);
+    voiceButton.dataset.state = voiceTurnState;
+    voiceButton.setAttribute("aria-pressed", String(voiceTurnState === VOICE_TURN_STATE.RECORDING));
+
+    if (voiceTurnState === VOICE_TURN_STATE.RECORDING) {
+      voiceTitle.textContent = "Stop voice input";
+      voiceMeta.textContent = "Recording from the microphone. Text input is locked until this voice turn finishes.";
+      messageBox.placeholder = "Voice capture in progress. This turn will be sent as audio only.";
+      return;
+    }
+
+    if (voiceTurnState === VOICE_TURN_STATE.PROCESSING) {
+      voiceTitle.textContent = "Processing voice input";
+      voiceMeta.textContent = "Preparing the recorded audio and sending the voice turn to the local edge-backend.";
+      messageBox.placeholder = "Voice turn is being processed.";
+      return;
+    }
+
+    voiceTitle.textContent = "Start voice input";
+    voiceMeta.textContent = "Use the microphone for one audio-only turn. Click again to stop and submit.";
+    messageBox.placeholder = "Type a supportive conversation prompt or record audio.";
   }
 
-  recordButton.addEventListener("click", async () => {
+  async function startVoiceTurn() {
+    preservedDraft = messageBox.value;
+    voiceTurnState = VOICE_TURN_STATE.RECORDING;
+    messageBox.value = "";
+    syncControls();
+
     try {
-      if (isRecording) {
-        stopRecording();
-      } else {
-        await startRecording();
-      }
+      await recorder.start();
+      onStatusChange("Recording audio from microphone. Text input is locked for this turn.");
     } catch (error) {
+      voiceTurnState = VOICE_TURN_STATE.IDLE;
+      messageBox.value = preservedDraft;
+      preservedDraft = "";
+      syncControls();
+
       const detail = error instanceof Error ? error.message : "Audio capture failed.";
-      attachment.textContent = detail;
       onStatusChange(detail);
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => track.stop());
-        mediaStream = null;
+    }
+  }
+
+  async function stopVoiceTurn() {
+    voiceTurnState = VOICE_TURN_STATE.PROCESSING;
+    syncControls();
+    onStatusChange("Stopping microphone capture and preparing the voice turn.");
+
+    try {
+      const audioPayload = await recorder.stop();
+      if (!audioPayload?.audio_base64) {
+        throw new Error("No audio data was captured for this voice turn.");
       }
-      recordButton.textContent = "Start audio capture";
-      isRecording = false;
+
+      const sent = await onSend({
+        text: "",
+        audio: audioPayload,
+      });
+
+      if (!sent) {
+        messageBox.value = preservedDraft;
+      }
+
+      preservedDraft = "";
+    } catch (error) {
+      messageBox.value = preservedDraft;
+      preservedDraft = "";
+
+      const detail = error instanceof Error ? error.message : "Voice turn processing failed.";
+      onStatusChange(detail);
+    } finally {
+      voiceTurnState = VOICE_TURN_STATE.IDLE;
+      syncControls();
+    }
+  }
+
+  function setBusy(nextBusy) {
+    isBusy = nextBusy;
+    syncControls();
+  }
+
+  voiceButton.addEventListener("click", async () => {
+    if (voiceTurnState === VOICE_TURN_STATE.RECORDING) {
+      await stopVoiceTurn();
+      return;
+    }
+
+    if (voiceTurnState === VOICE_TURN_STATE.IDLE) {
+      await startVoiceTurn();
     }
   });
 
@@ -141,15 +142,15 @@ export function createInputBar({ onSend, onStatusChange }) {
     event.preventDefault();
     const sent = await onSend({
       text: messageBox.value.trim(),
-      audio: pendingAudio,
+      audio: null,
     });
     if (sent) {
       messageBox.value = "";
-      pendingAudio = null;
-      attachment.textContent = "No audio attached.";
       onStatusChange("Input cleared and ready for the next turn.");
     }
   });
+
+  syncControls();
 
   return {
     element,

@@ -13,11 +13,25 @@ for candidate in SHARED_PATH_CANDIDATES:
         sys.path.append(str(candidate))
 
 from contracts.schemas import (  # noqa: E402
+    AudioMetaSchema,
     AvatarActionSchema,
-    ChatRequestSchema,
     ChatResponseSchema,
     ErrorResponseSchema,
+    SpeechFeaturesSchema,
+    VisionFeaturesSchema,
 )
+
+
+class AudioMeta(AudioMetaSchema):
+    pass
+
+
+class SpeechFeatures(SpeechFeaturesSchema):
+    pass
+
+
+class VisionFeatures(VisionFeaturesSchema):
+    pass
 
 
 class ChatRequest(BaseModel):
@@ -26,9 +40,18 @@ class ChatRequest(BaseModel):
     user_text: str | None = Field(default=None)
     input_type: str = Field(default="text")
     client_ts: int | None = None
+    text_source: str | None = None
+    client_asr_text: str | None = None
+    client_asr_source: str | None = None
     audio_base64: str | None = None
     audio_format: str | None = None
     audio_duration_ms: int | None = Field(default=None, ge=0)
+    audio_sample_rate_hz: int | None = Field(default=None, ge=1)
+    audio_channels: int | None = Field(default=None, ge=1)
+    audio_meta: AudioMeta | None = None
+    speech_features: SpeechFeatures | None = None
+    vision_features: VisionFeatures | None = None
+    alignment_mode: str | None = None
 
 
 class RemoteChatRequest(BaseModel):
@@ -37,9 +60,18 @@ class RemoteChatRequest(BaseModel):
     user_text: str = Field(..., min_length=1)
     input_type: str = Field(default="text")
     client_ts: int | None = None
+    text_source: str | None = None
+    client_asr_text: str | None = None
+    client_asr_source: str | None = None
     audio_base64: str | None = None
     audio_format: str | None = None
     audio_duration_ms: int | None = Field(default=None, ge=0)
+    audio_sample_rate_hz: int | None = Field(default=None, ge=1)
+    audio_channels: int | None = Field(default=None, ge=1)
+    audio_meta: AudioMeta | None = None
+    speech_features: SpeechFeatures | None = None
+    vision_features: VisionFeatures | None = None
+    alignment_mode: str | None = None
 
 
 class AvatarAction(AvatarActionSchema):

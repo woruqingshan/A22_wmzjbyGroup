@@ -18,6 +18,7 @@ services:
     volumes:
       - ./local/edge-backend:/app
       - ./shared:/shared
+      - ./logs:/workspace-logs
       - a22_logs:/logs
       - a22_data:/data
     command: bash -lc "pip install -r requirements.txt && uvicorn app:app --host 0.0.0.0 --port 8000"
@@ -25,7 +26,7 @@ services:
       - "8000:8000"
     environment:
       CLOUD_API_BASE: http://host.docker.internal:19000
-      LOG_DIR: /logs
+      LOG_DIR: /workspace-logs/edge-backend
       DATA_DIR: /data
     networks:
       - a22-net

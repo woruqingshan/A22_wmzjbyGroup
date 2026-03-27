@@ -14,6 +14,7 @@ class Settings:
 
         self.max_context_messages = int(os.getenv("MAX_CONTEXT_MESSAGES", "8"))
         self.context_summary_turns = int(os.getenv("CONTEXT_SUMMARY_TURNS", "4"))
+        self.log_dir = os.getenv("LOG_DIR", "/tmp/a22_logs/orchestrator").strip() or "/tmp/a22_logs/orchestrator"
         self.system_prompt = os.getenv(
             "LLM_SYSTEM_PROMPT",
             (

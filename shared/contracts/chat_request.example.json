@@ -1,7 +1,35 @@
 {
   "session_id": "demo-001",
-  "turn_id": 1,
-  "user_text": "你好，我今天有点难受",
-  "input_type": "text",
-  "client_ts": 1710000000
+  "turn_id": 3,
+  "user_text": "我最近有点焦虑，也有一点累",
+  "input_type": "audio",
+  "client_ts": 1710000000,
+  "text_source": "browser_speech_api",
+  "audio_format": "wav",
+  "audio_duration_ms": 4120,
+  "audio_sample_rate_hz": 48000,
+  "audio_channels": 1,
+  "client_asr_text": "我最近有点焦虑，也有一点累",
+  "client_asr_source": "browser_speech_api",
+  "audio_meta": {
+    "format": "wav",
+    "duration_ms": 4120,
+    "sample_rate_hz": 48000,
+    "channels": 1,
+    "source": "browser_microphone",
+    "frame_count": 197760
+  },
+  "speech_features": {
+    "transcript_confidence": 0.65,
+    "speaking_rate": 3.4,
+    "pause_ratio": 0.18,
+    "rms_energy": 0.0712,
+    "peak_level": 0.514,
+    "pitch_hz": 183.4,
+    "dominant_channel": 1,
+    "emotion_tags": ["hesitant", "fatigued"],
+    "channel_rms_levels": [0.0712],
+    "source": "local_audio_feature_extractor"
+  },
+  "alignment_mode": "audio_only"
 }

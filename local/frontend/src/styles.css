@@ -328,6 +328,7 @@ textarea {
 
 .primary-button:disabled,
 .secondary-button:disabled,
+.audio-turn-button:disabled,
 textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -374,11 +375,39 @@ textarea {
   color: #e2e8f0;
 }
 
-.audio-attachment {
-  padding: 10px 12px;
+.audio-turn-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
   border-radius: 14px;
   background: rgba(30, 41, 59, 0.75);
   color: #cbd5e1;
+  cursor: pointer;
+  text-align: left;
+}
+
+.audio-turn-button[data-state="recording"] {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(127, 29, 29, 0.35);
+}
+
+.audio-turn-button[data-state="processing"] {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(14, 116, 144, 0.22);
+}
+
+.audio-turn-title {
+  font-weight: 700;
+}
+
+.audio-turn-meta {
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 @keyframes slowNod {

@@ -9,5 +9,6 @@
   "server_ts": 1710000001,
   "response_source": "mock",
   "context_summary": "user:你好，我今天有点难受",
-  "reasoning_hint": "detected-emotional-keywords"
+  "reasoning_hint": "detected-emotional-keywords",
+  "alignment_mode": "audio_only"
 }
