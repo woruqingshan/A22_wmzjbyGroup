@@ -15,9 +15,11 @@ services:
   edge-backend:
     image: python:3.11-slim-bookworm
     working_dir: /app
+    gpus: all
     volumes:
       - ./local/edge-backend:/app
       - ./shared:/shared
+      - /mnt/e/downloads:/external-downloads:ro
       - ./logs:/workspace-logs
       - a22_logs:/logs
       - a22_data:/data
@@ -28,6 +30,12 @@ services:
       CLOUD_API_BASE: http://host.docker.internal:19000
       LOG_DIR: /workspace-logs/edge-backend
       DATA_DIR: /data
+      LOCAL_ASR_PROVIDER: belle_whisper
+      LOCAL_ASR_MODEL: BELLE-2/Belle-whisper-large-v3-turbo-zh
+      LOCAL_ASR_MODEL_PATH: /external-downloads/Belle-whisper-large-v3-turbo-zh
+      LOCAL_ASR_LANGUAGE: zh
+      LOCAL_ASR_DEVICE: cuda:0
+      CUDA_VISIBLE_DEVICES: "0"
     networks:
       - a22-net
 

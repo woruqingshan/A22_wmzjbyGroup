@@ -190,3 +190,7 @@ Current observability behavior:
 - log chat request receive, preprocessing, remote bridge traffic, response, and error paths
 - write backend-to-remote bridge traces into host-visible `logs/edge-backend`
 - provide a terminal listener script at `a22_demo/listen_bridge.py`
+
+
+python3 /home/siyuen/docker_ws/A22/a22_demo/listen_bridge.py
+
