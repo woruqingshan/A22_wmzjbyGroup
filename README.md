@@ -195,6 +195,7 @@ uv pip install vllm
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
 source .venv/bin/activate
+export CUDA_VISIBLE_DEVICES=<cuda_id>
 python -m vllm.entrypoints.openai.api_server \
   --host 127.0.0.1 \
   --port 8000 \
@@ -210,6 +211,12 @@ python -m vllm.entrypoints.openai.api_server \
 ```bash
 curl http://127.0.0.1:8000/v1/models
 ```
+
+其中：
+
+- `<cuda_id>` 可以填 `0`、`1` 或 `2`
+- 单卡部署时，`CUDA_VISIBLE_DEVICES=1` 表示只让 vLLM 使用物理 1 号 GPU
+- 当前 `Qwen2.5-7B-Instruct` 默认按单卡启动即可，不需要额外加 `tensor-parallel-size`
 
 #### 7.6.3 准备 orchestrator 的 `uv` 环境
 
@@ -283,6 +290,7 @@ docker compose -f compose.yaml -f compose.local.yaml up -d
 ```bash
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/qwen-server
 source .venv/bin/activate
+export CUDA_VISIBLE_DEVICES=<cuda_id>
 python -m vllm.entrypoints.openai.api_server \
   --host 127.0.0.1 \
   --port 8000 \
