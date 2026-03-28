@@ -15,6 +15,39 @@ class Settings:
         self.max_context_messages = int(os.getenv("MAX_CONTEXT_MESSAGES", "8"))
         self.context_summary_turns = int(os.getenv("CONTEXT_SUMMARY_TURNS", "4"))
         self.log_dir = os.getenv("LOG_DIR", "/tmp/a22_logs/orchestrator").strip() or "/tmp/a22_logs/orchestrator"
+        self.speech_service_enabled = os.getenv("SPEECH_SERVICE_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.speech_service_base = (
+            os.getenv("SPEECH_SERVICE_BASE", "http://127.0.0.1:19100").strip().rstrip("/")
+            or "http://127.0.0.1:19100"
+        )
+        self.speech_service_timeout_seconds = float(os.getenv("SPEECH_SERVICE_TIMEOUT_SECONDS", "60"))
+        self.vision_service_enabled = os.getenv("VISION_SERVICE_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.vision_service_base = (
+            os.getenv("VISION_SERVICE_BASE", "http://127.0.0.1:19200").strip().rstrip("/")
+            or "http://127.0.0.1:19200"
+        )
+        self.vision_service_timeout_seconds = float(os.getenv("VISION_SERVICE_TIMEOUT_SECONDS", "20"))
+        self.avatar_service_enabled = os.getenv("AVATAR_SERVICE_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.avatar_service_base = (
+            os.getenv("AVATAR_SERVICE_BASE", "http://127.0.0.1:19300").strip().rstrip("/")
+            or "http://127.0.0.1:19300"
+        )
+        self.avatar_service_timeout_seconds = float(os.getenv("AVATAR_SERVICE_TIMEOUT_SECONDS", "20"))
         self.system_prompt = os.getenv(
             "LLM_SYSTEM_PROMPT",
             (

@@ -1,7 +1,7 @@
 from math import sqrt
 
-from services.audio.contracts import AudioMeta, SpeechFeatures
-from services.audio.wav_utils import DecodedAudio
+from models import AudioMeta, SpeechFeatures
+from services.wav_utils import DecodedAudio
 
 
 class AudioFeatureExtractor:
@@ -26,11 +26,11 @@ class AudioFeatureExtractor:
                     sample_rate_hz=decoded_audio.sample_rate_hz,
                     channels=decoded_audio.channels,
                     frame_count=decoded_audio.frame_count,
-                    source="local_audio_feature_extractor",
+                    source="remote_speech_service",
                 ),
                 SpeechFeatures(
                     transcript_confidence=transcript_confidence,
-                    source="local_audio_feature_extractor",
+                    source="remote_speech_service",
                 ),
             )
 
@@ -56,7 +56,7 @@ class AudioFeatureExtractor:
                 sample_rate_hz=decoded_audio.sample_rate_hz,
                 channels=decoded_audio.channels,
                 frame_count=decoded_audio.frame_count,
-                source="local_audio_feature_extractor",
+                source="remote_speech_service",
             ),
             SpeechFeatures(
                 transcript_confidence=transcript_confidence,
@@ -68,7 +68,7 @@ class AudioFeatureExtractor:
                 dominant_channel=dominant_channel,
                 emotion_tags=emotion_tags,
                 channel_rms_levels=[round(level, 4) for level in channel_rms_levels],
-                source="local_audio_feature_extractor",
+                source="remote_speech_service",
             ),
         )
 
@@ -76,23 +76,14 @@ class AudioFeatureExtractor:
 def _compute_rms(samples: list[float]) -> float | None:
     if not samples:
         return None
-
-    mean_square = sum(sample * sample for sample in samples) / len(samples)
-    return sqrt(mean_square)
+    return sqrt(sum(sample * sample for sample in samples) / len(samples))
 
 
 def _estimate_speaking_rate(transcript: str, duration_seconds: float) -> float | None:
     if not transcript or duration_seconds <= 0:
         return None
-
-    token_count = len([token for token in transcript.split() if token])
-    if token_count <= 1:
-        token_count = len("".join(transcript.split()))
-
-    if token_count <= 0:
-        return None
-
-    return round(token_count / duration_seconds, 2)
+    token_count = len([token for token in transcript.split() if token]) or len("".join(transcript.split()))
+    return round(token_count / duration_seconds, 2) if token_count > 0 else None
 
 
 def _estimate_pause_ratio(samples: list[float], sample_rate_hz: int) -> float | None:
@@ -102,21 +93,16 @@ def _estimate_pause_ratio(samples: list[float], sample_rate_hz: int) -> float | 
     window_size = max(int(sample_rate_hz * 0.05), 1)
     silent_windows = 0
     total_windows = 0
-
     for offset in range(0, len(samples), window_size):
         window = samples[offset : offset + window_size]
         if not window:
             continue
-
         average_energy = sum(abs(sample) for sample in window) / len(window)
         if average_energy < 0.015:
             silent_windows += 1
         total_windows += 1
 
-    if total_windows <= 0:
-        return None
-
-    return round(silent_windows / total_windows, 4)
+    return round(silent_windows / total_windows, 4) if total_windows > 0 else None
 
 
 def _estimate_pitch(samples: list[float], sample_rate_hz: int, duration_seconds: float) -> float | None:
@@ -132,43 +118,28 @@ def _estimate_pitch(samples: list[float], sample_rate_hz: int, duration_seconds:
             zero_crossings += 1
         previous = current
 
-    if zero_crossings <= 0:
-        return None
-
-    return round(zero_crossings / (2 * duration_seconds), 2)
+    return round(zero_crossings / (2 * duration_seconds), 2) if zero_crossings > 0 else None
 
 
-def _infer_emotion_tags(
-    *,
-    speaking_rate: float | None,
-    pause_ratio: float | None,
-    rms_energy: float | None,
-) -> list[str]:
+def _infer_emotion_tags(*, speaking_rate: float | None, pause_ratio: float | None, rms_energy: float | None) -> list[str]:
     tags: list[str] = []
-
     if pause_ratio is not None and pause_ratio >= 0.35:
         tags.append("hesitant")
-
     if rms_energy is not None and rms_energy <= 0.035:
         tags.append("fatigued")
     elif rms_energy is not None and rms_energy >= 0.18:
         tags.append("energized")
-
     if speaking_rate is not None and speaking_rate >= 5.5:
         tags.append("agitated")
     elif speaking_rate is not None and speaking_rate <= 2.2:
         tags.append("calm")
-
     if not tags:
         tags.append("steady")
-
     return tags
 
 
 def _round_or_none(value: float | None) -> float | None:
-    if value is None:
-        return None
-    return round(value, 4)
+    return round(value, 4) if value is not None else None
 
 
 audio_feature_extractor = AudioFeatureExtractor()

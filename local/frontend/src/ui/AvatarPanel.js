@@ -1,3 +1,5 @@
+import { createAvatarRenderer } from "../avatar/renderer";
+
 export function createAvatarPanel() {
   const element = document.createElement("section");
   element.className = "avatar-panel";
@@ -7,10 +9,10 @@ export function createAvatarPanel() {
         <p class="eyebrow">A · Avatar</p>
         <h2>Digital Human Render Panel</h2>
       </div>
-      <span class="chip">2D placeholder</span>
+      <span class="chip">2D renderer scaffold</span>
     </div>
-    <div class="avatar-stage">
-      <div class="avatar-face" data-expression="neutral" data-motion="steady">
+      <div class="avatar-stage">
+      <div class="avatar-face" data-expression="neutral" data-motion="steady" data-viseme="sil">
         <div class="avatar-halo"></div>
         <div class="avatar-head">
           <div class="avatar-eyes">
@@ -41,6 +43,14 @@ export function createAvatarPanel() {
   const emotionStyle = element.querySelector('[data-role="emotion-style"]');
   const facialExpression = element.querySelector('[data-role="facial-expression"]');
   const headMotion = element.querySelector('[data-role="head-motion"]');
+  const renderer = createAvatarRenderer({
+    faceElement: face,
+    readouts: {
+      emotionStyle,
+      facialExpression,
+      headMotion,
+    },
+  });
 
   const api = {
     element,
@@ -51,13 +61,7 @@ export function createAvatarPanel() {
       api.currentEmotionStyle = response.emotion_style || api.currentEmotionStyle;
       api.currentFacialExpression = response.avatar_action?.facial_expression || api.currentFacialExpression;
       api.currentHeadMotion = response.avatar_action?.head_motion || api.currentHeadMotion;
-
-      emotionStyle.textContent = api.currentEmotionStyle;
-      facialExpression.textContent = api.currentFacialExpression;
-      headMotion.textContent = api.currentHeadMotion;
-
-      face.dataset.expression = api.currentFacialExpression;
-      face.dataset.motion = api.currentHeadMotion;
+      renderer.render(response);
     },
   };
 

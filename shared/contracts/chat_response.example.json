@@ -25,19 +25,19 @@
       {
         "start_ms": 0,
         "end_ms": 620,
-        "label": "viseme_open",
+        "label": "a",
         "weight": 0.55
       },
       {
         "start_ms": 620,
         "end_ms": 1240,
-        "label": "viseme_mid",
+        "label": "e",
         "weight": 0.5
       },
       {
         "start_ms": 1240,
         "end_ms": 1860,
-        "label": "viseme_closed",
+        "label": "sil",
         "weight": 0.45
       }
     ],
@@ -71,7 +71,9 @@
     "capture_ended_at_ms": 1710000004243,
     "audio_started_at_ms": 1710000000123,
     "audio_ended_at_ms": 1710000004243,
+    "video_started_at_ms": 1710000004010,
+    "video_ended_at_ms": 1710000004250,
     "window_duration_ms": 4120
   },
-  "alignment_mode": "audio_only"
+  "alignment_mode": "video_audio"
 }

@@ -1,0 +1,129 @@
+from dataclasses import dataclass
+
+import httpx
+
+from config import settings
+from models import AvatarAction, AvatarOutput, ChatRequest
+
+
+@dataclass
+class AvatarGenerationResult:
+    avatar_output: AvatarOutput
+    reply_audio_url: str | None
+
+
+class AvatarClient:
+    async def generate(
+        self,
+        *,
+        request: ChatRequest,
+        reply_text: str,
+        emotion_style: str,
+        avatar_action: AvatarAction,
+    ) -> AvatarGenerationResult:
+        if settings.avatar_service_enabled:
+            try:
+                return await self._call_service(
+                    request=request,
+                    reply_text=reply_text,
+                    emotion_style=emotion_style,
+                    avatar_action=avatar_action,
+                )
+            except httpx.HTTPError:
+                pass
+
+        return self._build_fallback(
+            request=request,
+            reply_text=reply_text,
+            emotion_style=emotion_style,
+            avatar_action=avatar_action,
+        )
+
+    async def _call_service(
+        self,
+        *,
+        request: ChatRequest,
+        reply_text: str,
+        emotion_style: str,
+        avatar_action: AvatarAction,
+    ) -> AvatarGenerationResult:
+        payload = {
+            "session_id": request.session_id,
+            "turn_id": request.turn_id,
+            "reply_text": reply_text,
+            "emotion_style": emotion_style,
+            "avatar_action": avatar_action.model_dump() if hasattr(avatar_action, "model_dump") else avatar_action.dict(),
+            "turn_time_window": (
+                request.turn_time_window.model_dump()
+                if request.turn_time_window and hasattr(request.turn_time_window, "model_dump")
+                else request.turn_time_window.dict() if request.turn_time_window
+                else None
+            ),
+        }
+
+        async with httpx.AsyncClient(timeout=settings.avatar_service_timeout_seconds) as client:
+            response = await client.post(f"{settings.avatar_service_base}/generate", json=payload)
+            response.raise_for_status()
+
+        body = response.json()
+        return AvatarGenerationResult(
+            avatar_output=AvatarOutput(**body["avatar_output"]),
+            reply_audio_url=body.get("reply_audio_url"),
+        )
+
+    def _build_fallback(
+        self,
+        *,
+        request: ChatRequest,
+        reply_text: str,
+        emotion_style: str,
+        avatar_action: AvatarAction,
+    ) -> AvatarGenerationResult:
+        estimated_duration_ms = min(max(len(reply_text) * 180, 1200), 8000)
+
+        avatar_output = AvatarOutput(
+            contract_version="v1",
+            renderer_mode="parameterized_2d",
+            transport_mode="http_poll",
+            websocket_endpoint="/ws/avatar",
+            stream_id=request.turn_time_window.stream_id if request.turn_time_window else None,
+            sequence_id=request.turn_id,
+            avatar_id="default-2d",
+            emotion_style=emotion_style,
+            audio={
+                "audio_url": None,
+                "mime_type": None,
+                "duration_ms": None,
+                "cache_key": None,
+            },
+            viseme_seq=[
+                {"start_ms": 0, "end_ms": estimated_duration_ms // 3, "label": "a", "weight": 0.55},
+                {
+                    "start_ms": estimated_duration_ms // 3,
+                    "end_ms": (estimated_duration_ms * 2) // 3,
+                    "label": "e",
+                    "weight": 0.5,
+                },
+                {"start_ms": (estimated_duration_ms * 2) // 3, "end_ms": estimated_duration_ms, "label": "sil", "weight": 0.45},
+            ],
+            expression_seq=[
+                {
+                    "start_ms": 0,
+                    "end_ms": estimated_duration_ms,
+                    "expression": avatar_action.facial_expression,
+                    "intensity": 0.72,
+                }
+            ],
+            motion_seq=[
+                {
+                    "start_ms": 0,
+                    "end_ms": estimated_duration_ms,
+                    "motion": avatar_action.head_motion,
+                    "intensity": 0.6,
+                }
+            ],
+        )
+        return AvatarGenerationResult(avatar_output=avatar_output, reply_audio_url=None)
+
+
+avatar_client = AvatarClient()

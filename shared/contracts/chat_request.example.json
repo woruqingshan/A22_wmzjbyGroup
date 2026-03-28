@@ -15,9 +15,13 @@
     "window_id": "demo-001-turn-3",
     "source_clock": "browser_epoch_ms",
     "transport_mode": "http_turn",
+    "capture_strategy": "event_window_keyframes",
     "sequence_id": 3,
     "capture_started_at_ms": 1710000000123,
     "capture_ended_at_ms": 1710000004243,
+    "triggered_at_ms": 1710000003000,
+    "pre_roll_ms": 6000,
+    "post_roll_ms": 1200,
     "audio_started_at_ms": 1710000000123,
     "audio_ended_at_ms": 1710000004243,
     "window_duration_ms": 4120
@@ -30,6 +34,48 @@
     "source": "browser_microphone",
     "frame_count": 197760
   },
+  "video_frames": [
+    {
+      "frame_id": "demo-001-turn-3-frame-1",
+      "timestamp_ms": 1710000004010,
+      "mime_type": "image/jpeg",
+      "image_base64": "<frame-1-base64>",
+      "width": 640,
+      "height": 360,
+      "source": "browser_camera"
+    },
+    {
+      "frame_id": "demo-001-turn-3-frame-2",
+      "timestamp_ms": 1710000004130,
+      "mime_type": "image/jpeg",
+      "image_base64": "<frame-2-base64>",
+      "width": 640,
+      "height": 360,
+      "source": "browser_camera"
+    },
+    {
+      "frame_id": "demo-001-turn-3-frame-3",
+      "timestamp_ms": 1710000004250,
+      "mime_type": "image/jpeg",
+      "image_base64": "<frame-3-base64>",
+      "width": 640,
+      "height": 360,
+      "source": "browser_camera"
+    }
+  ],
+  "video_meta": {
+    "format": "jpeg_event_window",
+    "duration_ms": 240,
+    "buffer_duration_ms": 15000,
+    "frame_count": 3,
+    "buffered_frame_count": 15,
+    "sampled_frame_count": 3,
+    "width": 640,
+    "height": 360,
+    "fps": 12.5,
+    "source": "browser_camera",
+    "keyframe_strategy": "rolling_buffer_event_window"
+  },
   "speech_features": {
     "transcript_confidence": 0.65,
     "speaking_rate": 3.4,
@@ -40,7 +86,8 @@
     "dominant_channel": 1,
     "emotion_tags": ["hesitant", "fatigued"],
     "channel_rms_levels": [0.0712],
-    "source": "local_audio_feature_extractor"
+    "source": "remote_belle_whisper"
   },
-  "alignment_mode": "audio_only"
+  "vision_features": null,
+  "alignment_mode": "video_audio"
 }

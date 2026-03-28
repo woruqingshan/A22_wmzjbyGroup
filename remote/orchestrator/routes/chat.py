@@ -26,7 +26,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
             "text_source": request.text_source,
             "alignment_mode": request.alignment_mode,
             "has_audio": has_audio,
-            "has_vision": bool(request.vision_features),
+            "has_vision": bool(request.vision_features or request.video_frames or request.video_meta),
+            "video_frame_count": len(request.video_frames),
         },
     )
     return await dialog_service.build_reply(request)

@@ -20,6 +20,8 @@ from contracts.schemas import (  # noqa: E402
     ErrorResponseSchema,
     SpeechFeaturesSchema,
     TurnTimeWindowSchema,
+    VideoFrameSchema,
+    VideoMetaSchema,
     VisionFeaturesSchema,
 )
 
@@ -29,6 +31,14 @@ class AudioMeta(AudioMetaSchema):
 
 
 class SpeechFeatures(SpeechFeaturesSchema):
+    pass
+
+
+class VideoFrame(VideoFrameSchema):
+    pass
+
+
+class VideoMeta(VideoMetaSchema):
     pass
 
 
@@ -55,6 +65,8 @@ class ChatRequest(BaseModel):
     audio_sample_rate_hz: int | None = Field(default=None, ge=1)
     audio_channels: int | None = Field(default=None, ge=1)
     audio_meta: AudioMeta | None = None
+    video_frames: list[VideoFrame] = Field(default_factory=list)
+    video_meta: VideoMeta | None = None
     speech_features: SpeechFeatures | None = None
     vision_features: VisionFeatures | None = None
     turn_time_window: TurnTimeWindow | None = None
@@ -64,7 +76,7 @@ class ChatRequest(BaseModel):
 class RemoteChatRequest(BaseModel):
     session_id: str = Field(..., min_length=1)
     turn_id: int = Field(..., ge=1)
-    user_text: str = Field(..., min_length=1)
+    user_text: str = Field(default="")
     input_type: str = Field(default="text")
     client_ts: int | None = None
     text_source: str | None = None
@@ -76,6 +88,8 @@ class RemoteChatRequest(BaseModel):
     audio_sample_rate_hz: int | None = Field(default=None, ge=1)
     audio_channels: int | None = Field(default=None, ge=1)
     audio_meta: AudioMeta | None = None
+    video_frames: list[VideoFrame] = Field(default_factory=list)
+    video_meta: VideoMeta | None = None
     speech_features: SpeechFeatures | None = None
     vision_features: VisionFeatures | None = None
     turn_time_window: TurnTimeWindow | None = None

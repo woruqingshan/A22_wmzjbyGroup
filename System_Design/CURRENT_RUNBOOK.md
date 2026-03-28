@@ -6,6 +6,9 @@ This document describes how to run the current A22 stack end to end:
 
 - local frontend
 - local edge-backend
+- remote `speech-service`
+- remote `vision-service`
+- remote `avatar-service`
 - remote `qwen-server` via vLLM
 - remote `orchestrator`
 - SSH tunnel from local to remote
@@ -15,22 +18,27 @@ This document describes how to run the current A22 stack end to end:
 The current runtime chain is:
 
 1. browser frontend records text or audio
-2. local `edge-backend` normalizes the turn
-3. local BELLE ASR converts audio to text when `input_type=audio`
-4. local `edge-backend` forwards a structured `/chat` request to remote `orchestrator`
-5. remote `orchestrator` calls the remote LLM service
-6. remote response returns to local backend and then to the frontend
+2. browser frontend can optionally capture camera key frames for the same turn
+3. local `edge-backend` normalizes the turn and forwards audio/video payloads
+4. remote `speech-service` handles ASR
+5. remote `vision-service` extracts structured visual features
+6. remote `orchestrator` aligns multimodal inputs and calls the remote LLM
+7. remote `avatar-service` generates TTS / viseme / expression / motion outputs
+8. remote response returns to local backend and then to the frontend renderer
 
 ## Start order
 
 Use this order:
 
 1. Start remote `qwen-server`
-2. Start remote `orchestrator`
-3. Create the SSH tunnel
-4. Start local Docker services
-5. Verify local BELLE warmup
-6. Run end-to-end tests
+2. Start remote `speech-service`
+3. Start remote `vision-service`
+4. Start remote `avatar-service`
+5. Start remote `orchestrator`
+6. Create the SSH tunnel
+7. Start local Docker services
+8. Verify local runtime status
+9. Run end-to-end tests
 
 ## Remote server: qwen-server
 
@@ -124,6 +132,74 @@ Verify on the server:
 curl http://127.0.0.1:19000/health
 ```
 
+## Remote server: speech-service
+
+Prepare the environment:
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
+uv venv --python /usr/bin/python3.11 .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
+```
+
+Start speech-service on the GPU chosen for BELLE ASR:
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
+source .venv/bin/activate
+export CUDA_VISIBLE_DEVICES=1
+export ASR_MODEL=/data/zifeng/siyuan/A22/models/Belle-whisper-large-v3-turbo-zh
+export ASR_DEVICE=cuda:0
+uvicorn app:app --host 127.0.0.1 --port 19100
+```
+
+Verify:
+
+```bash
+curl http://127.0.0.1:19100/health
+```
+
+## Remote server: vision-service
+
+Prepare and start:
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
+uv venv --python /usr/bin/python3.11 .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
+export VISION_DEVICE=cuda:1
+uvicorn app:app --host 127.0.0.1 --port 19200
+```
+
+Verify:
+
+```bash
+curl http://127.0.0.1:19200/health
+```
+
+## Remote server: avatar-service
+
+Prepare and start:
+
+```bash
+cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
+uv venv --python /usr/bin/python3.11 .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+export TTS_MODEL=/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B
+export TTS_DEVICE=cuda:1
+uvicorn app:app --host 127.0.0.1 --port 19300
+```
+
+Verify:
+
+```bash
+curl http://127.0.0.1:19300/health
+```
+
 ## Local machine: SSH tunnel
 
 Create the tunnel from local to remote:
@@ -157,14 +233,14 @@ docker compose -f compose.yaml -f compose.local.yaml ps
 docker compose -f compose.yaml -f compose.local.yaml logs -f edge-backend
 ```
 
-## Local BELLE warmup
+## Local runtime notes
 
-The local `edge-backend` preloads the BELLE ASR model during FastAPI startup.
+The local `edge-backend` is now a forwarding layer only. Audio turns should be
+observed on:
 
-The backend is considered ready only after the log shows:
-
-- `asr_warmup_start`
-- `asr_warmup_ready`
+- `speech-service /transcribe`
+- `vision-service /extract` when camera frames are attached
+- `avatar-service /generate` after the LLM reply is produced
 
 Watch the local logs:
 

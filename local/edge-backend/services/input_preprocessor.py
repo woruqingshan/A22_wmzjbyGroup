@@ -1,5 +1,5 @@
-from models import AudioMeta, ChatRequest, RemoteChatRequest, SpeechFeatures
-from services.audio import audio_turn_service
+from models import AudioMeta, ChatRequest, RemoteChatRequest
+from services.media import video_turn_service
 
 
 def normalize_chat_request(
@@ -19,27 +19,36 @@ def normalize_chat_request(
         raise ValueError("Either user_text or audio input is required.")
 
     if has_audio:
-        processed_audio = audio_turn_service.process(
-            audio_base64=request.audio_base64 or "",
-            audio_format=request.audio_format,
-            audio_duration_ms=request.audio_duration_ms,
-            audio_sample_rate_hz=request.audio_sample_rate_hz,
-            audio_channels=request.audio_channels,
-            client_asr_text=request.client_asr_text,
-            client_asr_source=request.client_asr_source,
-            request_id=request_id,
-        )
         input_type = "audio"
-        user_text = processed_audio.user_text
-        text_source = processed_audio.text_source
-        alignment_mode = request.alignment_mode or processed_audio.alignment_mode
-        audio_meta_payload = AudioMeta(**processed_audio.audio_meta.__dict__)
-        speech_features_payload = SpeechFeatures(**processed_audio.speech_features.__dict__)
+        user_text = user_text or (request.client_asr_text or "").strip()
+        text_source = request.text_source or request.client_asr_source or "remote_speech_pending"
+        alignment_mode = request.alignment_mode or "audio_only"
+        audio_meta_payload = request.audio_meta or AudioMeta(
+            format=request.audio_format,
+            duration_ms=request.audio_duration_ms,
+            sample_rate_hz=request.audio_sample_rate_hz,
+            channels=request.audio_channels,
+            source="browser_microphone",
+        )
+        speech_features_payload = request.speech_features
     else:
         text_source = request.text_source or "typed"
         alignment_mode = request.alignment_mode or "text_only"
         audio_meta_payload = request.audio_meta
         speech_features_payload = request.speech_features
+
+    processed_video = video_turn_service.process(
+        video_frames=request.video_frames,
+        video_meta=request.video_meta,
+        turn_time_window=request.turn_time_window,
+        primary_input_type=input_type,
+    )
+
+    if processed_video.alignment_mode:
+        alignment_mode = request.alignment_mode or processed_video.alignment_mode
+
+    vision_features_payload = request.vision_features or processed_video.vision_features
+    turn_time_window = processed_video.turn_time_window or request.turn_time_window
 
     return RemoteChatRequest(
         session_id=session_id,
@@ -58,8 +67,10 @@ def normalize_chat_request(
         ),
         audio_channels=audio_meta_payload.channels if audio_meta_payload else request.audio_channels,
         audio_meta=audio_meta_payload,
+        video_frames=processed_video.video_frames,
+        video_meta=processed_video.video_meta,
         speech_features=speech_features_payload,
-        vision_features=request.vision_features,
-        turn_time_window=request.turn_time_window,
+        vision_features=vision_features_payload,
+        turn_time_window=turn_time_window,
         alignment_mode=alignment_mode,
     )

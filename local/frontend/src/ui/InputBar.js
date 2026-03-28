@@ -1,7 +1,9 @@
 import { createAudioTurnRecorder } from "../audio/audioTurnRecorder";
 import { VOICE_TURN_STATE } from "../audio/recorderStates";
+import { createCameraTurnRecorder } from "../video/cameraTurnRecorder";
+import { createCameraPanel } from "./CameraPanel";
 
-export function createInputBar({ onSend, onStatusChange }) {
+export function createInputBar({ onSend, onStatusChange, onVideoStatusChange }) {
   const element = document.createElement("section");
   element.className = "input-panel";
   element.innerHTML = `
@@ -10,7 +12,7 @@ export function createInputBar({ onSend, onStatusChange }) {
         <p class="eyebrow">C · Input</p>
         <h2>Text / Audio Entry</h2>
       </div>
-      <span class="chip">Audio-first scaffold</span>
+      <span class="chip">Audio + video scaffold</span>
     </div>
     <form class="input-form">
       <label class="field-label" for="message-box">Text message</label>
@@ -22,6 +24,7 @@ export function createInputBar({ onSend, onStatusChange }) {
         <span class="audio-turn-title" data-role="voice-title">Start voice input</span>
         <span class="audio-turn-meta" data-role="voice-meta">Use the microphone for one audio-only turn. Click again to stop and submit.</span>
       </button>
+      <div data-role="camera-slot"></div>
     </form>
   `;
 
@@ -31,8 +34,35 @@ export function createInputBar({ onSend, onStatusChange }) {
   const voiceButton = element.querySelector('[data-role="voice-button"]');
   const voiceTitle = element.querySelector('[data-role="voice-title"]');
   const voiceMeta = element.querySelector('[data-role="voice-meta"]');
+  const cameraSlot = element.querySelector('[data-role="camera-slot"]');
 
   const recorder = createAudioTurnRecorder();
+  const cameraRecorder = createCameraTurnRecorder();
+  const cameraPanel = createCameraPanel({
+    onToggle: async (shouldEnable) => {
+      if (shouldEnable) {
+        try {
+          await cameraRecorder.enable();
+          cameraPanel.setMeta("Camera preview is active. A rolling local buffer is collecting recent frames for event-window packaging.");
+          onVideoStatusChange("Camera preview and local rolling buffer enabled");
+          return true;
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : "Camera capture failed.";
+          cameraPanel.setMeta(detail);
+          onVideoStatusChange(detail);
+          return false;
+        }
+      }
+
+      await cameraRecorder.disable();
+      cameraPanel.setMeta("Camera disabled. Video key frames will not be attached to turns.");
+      onVideoStatusChange("Camera disabled");
+      return false;
+    },
+  });
+
+  cameraSlot.appendChild(cameraPanel.element);
+  cameraRecorder.bindPreview(cameraPanel.preview);
 
   let isBusy = false;
   let voiceTurnState = VOICE_TURN_STATE.IDLE;
@@ -44,6 +74,7 @@ export function createInputBar({ onSend, onStatusChange }) {
     messageBox.disabled = textLocked;
     sendButton.disabled = textLocked;
     sendButton.textContent = isBusy ? "Sending..." : "Send turn";
+    cameraPanel.setBusy(isBusy);
 
     voiceButton.disabled = voiceTurnState === VOICE_TURN_STATE.PROCESSING
       || (isBusy && voiceTurnState !== VOICE_TURN_STATE.RECORDING);
@@ -67,6 +98,29 @@ export function createInputBar({ onSend, onStatusChange }) {
     voiceTitle.textContent = "Start voice input";
     voiceMeta.textContent = "Use the microphone for one audio-only turn. Click again to stop and submit.";
     messageBox.placeholder = "Type a supportive conversation prompt or record audio.";
+  }
+
+  async function captureOptionalVideoTurn(baseTurnWindow = null) {
+    if (!cameraRecorder.isEnabled()) {
+      return null;
+    }
+
+    onVideoStatusChange("Capturing camera key frames for this turn.");
+    const payload = await cameraRecorder.captureTurn(baseTurnWindow);
+
+    if (payload?.video_frames?.length) {
+      const count = payload.video_frames.length;
+      const preRollMs = payload.turn_time_window?.pre_roll_ms || 0;
+      const postRollMs = payload.turn_time_window?.post_roll_ms || 0;
+      cameraPanel.setMeta(
+        `Camera preview active. Event window packaged with ${count} key frames (${preRollMs} ms pre-roll, ${postRollMs} ms post-roll).`,
+      );
+      onVideoStatusChange(`Attached ${count} buffered camera key frames`);
+    } else {
+      onVideoStatusChange("Camera was enabled, but no video frames were attached.");
+    }
+
+    return payload;
   }
 
   async function startVoiceTurn() {
@@ -100,9 +154,11 @@ export function createInputBar({ onSend, onStatusChange }) {
         throw new Error("No audio data was captured for this voice turn.");
       }
 
+      const videoPayload = await captureOptionalVideoTurn(audioPayload.turn_time_window);
       const sent = await onSend({
         text: "",
         audio: audioPayload,
+        video: videoPayload,
       });
 
       if (!sent) {
@@ -140,9 +196,11 @@ export function createInputBar({ onSend, onStatusChange }) {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const videoPayload = await captureOptionalVideoTurn();
     const sent = await onSend({
       text: messageBox.value.trim(),
       audio: null,
+      video: videoPayload,
     });
     if (sent) {
       messageBox.value = "";
@@ -150,6 +208,7 @@ export function createInputBar({ onSend, onStatusChange }) {
     }
   });
 
+  onVideoStatusChange("Camera disabled");
   syncControls();
 
   return {

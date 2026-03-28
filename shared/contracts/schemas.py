@@ -23,21 +23,51 @@ class SpeechFeaturesSchema(BaseModel):
     source: str | None = None
 
 
+class VideoFrameSchema(BaseModel):
+    frame_id: str | None = None
+    timestamp_ms: int | None = Field(default=None, ge=0)
+    mime_type: str | None = None
+    image_base64: str | None = None
+    width: int | None = Field(default=None, ge=1)
+    height: int | None = Field(default=None, ge=1)
+    source: str | None = None
+
+
+class VideoMetaSchema(BaseModel):
+    format: str | None = None
+    duration_ms: int | None = Field(default=None, ge=0)
+    buffer_duration_ms: int | None = Field(default=None, ge=0)
+    frame_count: int | None = Field(default=None, ge=0)
+    buffered_frame_count: int | None = Field(default=None, ge=0)
+    sampled_frame_count: int | None = Field(default=None, ge=0)
+    width: int | None = Field(default=None, ge=1)
+    height: int | None = Field(default=None, ge=1)
+    fps: float | None = Field(default=None, ge=0.0)
+    source: str | None = None
+    keyframe_strategy: str | None = None
+
+
 class VisionFeaturesSchema(BaseModel):
     scene_summary: str | None = None
     attention_target: str | None = None
     motion_level: str | None = None
     emotion_tags: list[str] = Field(default_factory=list)
+    source: str | None = None
+    frame_count: int | None = Field(default=None, ge=0)
 
 
 class TurnTimeWindowSchema(BaseModel):
     window_id: str | None = None
     source_clock: str | None = None
     transport_mode: str | None = None
+    capture_strategy: str | None = None
     stream_id: str | None = None
     sequence_id: int | None = Field(default=None, ge=0)
     capture_started_at_ms: int | None = Field(default=None, ge=0)
     capture_ended_at_ms: int | None = Field(default=None, ge=0)
+    triggered_at_ms: int | None = Field(default=None, ge=0)
+    pre_roll_ms: int | None = Field(default=None, ge=0)
+    post_roll_ms: int | None = Field(default=None, ge=0)
     audio_started_at_ms: int | None = Field(default=None, ge=0)
     audio_ended_at_ms: int | None = Field(default=None, ge=0)
     video_started_at_ms: int | None = Field(default=None, ge=0)
@@ -60,6 +90,8 @@ class ChatRequestSchema(BaseModel):
     audio_sample_rate_hz: int | None = Field(default=None, ge=1)
     audio_channels: int | None = Field(default=None, ge=1)
     audio_meta: AudioMetaSchema | None = None
+    video_frames: list[VideoFrameSchema] = Field(default_factory=list)
+    video_meta: VideoMetaSchema | None = None
     speech_features: SpeechFeaturesSchema | None = None
     vision_features: VisionFeaturesSchema | None = None
     turn_time_window: TurnTimeWindowSchema | None = None

@@ -18,6 +18,7 @@ const state = {
   facialExpression: "neutral",
   headMotion: "steady",
   audioStatus: "Audio idle",
+  videoStatus: "Camera disabled",
   isSending: false,
 };
 
@@ -29,6 +30,11 @@ const inputBar = createInputBar({
   onStatusChange: (audioStatus) => {
     syncStatus({
       audioStatus,
+    });
+  },
+  onVideoStatusChange: (videoStatus) => {
+    syncStatus({
+      videoStatus,
     });
   },
 });
@@ -67,6 +73,7 @@ chatPanel.addSystemMessage("Local UI is ready. Send text or record a short audio
 syncStatus({
   remoteStatus: "Remote link pending",
   audioStatus: "Audio idle",
+  videoStatus: "Camera disabled",
 });
 
 function buildTextTurnTimeWindow(turnId) {
@@ -82,7 +89,7 @@ function buildTextTurnTimeWindow(turnId) {
   };
 }
 
-async function handleSend({ text, audio }) {
+async function handleSend({ text, audio, video }) {
   if (state.isSending) {
     chatPanel.addSystemMessage("A request is already in progress. Please wait for the current reply.");
     return false;
@@ -90,6 +97,7 @@ async function handleSend({ text, audio }) {
 
   const hasText = Boolean(text);
   const hasAudio = Boolean(audio?.audio_base64);
+  const hasVideo = Boolean(video?.video_frames?.length || video?.video_meta);
 
   if (!hasText && !hasAudio) {
     chatPanel.addSystemMessage("Please enter text or record audio before sending.");
@@ -114,18 +122,33 @@ async function handleSend({ text, audio }) {
     remoteStatus: "Awaiting remote orchestrator response",
     inputMode,
     audioStatus: hasAudio ? `Audio attached (${audio.audio_duration_ms} ms)` : "Text only",
+    videoStatus: hasVideo
+      ? `Video attached (${video.video_frames?.length || video.video_meta?.sampled_frame_count || 0} key frames)`
+      : state.videoStatus,
   });
 
   try {
-    const response = await sendChatRequest({
+    const turnTimeWindow = video?.turn_time_window || (hasAudio ? audio.turn_time_window : buildTextTurnTimeWindow(turnId));
+    const requestPayload = {
       session_id: state.sessionId,
       turn_id: turnId,
       user_text: hasText ? text : undefined,
       input_type: inputMode,
       client_ts: Math.floor(Date.now() / 1000),
-      turn_time_window: hasAudio ? audio.turn_time_window : buildTextTurnTimeWindow(turnId),
-      ...(hasAudio ? audio : {}),
-    });
+      turn_time_window: turnTimeWindow,
+    };
+
+    if (hasAudio) {
+      const { turn_time_window: _ignoredAudioWindow, ...audioPayload } = audio;
+      Object.assign(requestPayload, audioPayload);
+    }
+
+    if (hasVideo) {
+      const { turn_time_window: _ignoredVideoWindow, ...videoPayload } = video;
+      Object.assign(requestPayload, videoPayload);
+    }
+
+    const response = await sendChatRequest(requestPayload);
 
     state.nextTurnId += 1;
     state.transport = "Request completed";
@@ -144,6 +167,7 @@ async function handleSend({ text, audio }) {
       facialExpression: response.avatar_action.facial_expression,
       headMotion: response.avatar_action.head_motion,
       audioStatus: hasAudio ? "Audio processed by edge-backend" : "Text turn processed",
+      videoStatus: hasVideo ? "Video key frames forwarded by edge-backend" : state.videoStatus,
     });
     return true;
   } catch (error) {
@@ -153,6 +177,7 @@ async function handleSend({ text, audio }) {
       transport: "Request failed",
       remoteStatus: "Check edge-backend and remote orchestrator",
       audioStatus: hasAudio ? "Audio send failed" : "Text send failed",
+      videoStatus: hasVideo ? "Video send failed" : state.videoStatus,
     });
     return false;
   } finally {
@@ -170,6 +195,7 @@ function syncStatus(nextState) {
   state.facialExpression = nextState.facialExpression || state.facialExpression;
   state.headMotion = nextState.headMotion || state.headMotion;
   state.audioStatus = nextState.audioStatus || state.audioStatus;
+  state.videoStatus = nextState.videoStatus || state.videoStatus;
 
   statusBar.update({
     sessionId: state.sessionId,
@@ -181,5 +207,6 @@ function syncStatus(nextState) {
     facialExpression: state.facialExpression,
     headMotion: state.headMotion,
     audioStatus: state.audioStatus,
+    videoStatus: state.videoStatus,
   });
 }

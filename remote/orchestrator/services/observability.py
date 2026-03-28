@@ -34,6 +34,12 @@ class OrchestratorObservability:
             {
                 "llm_provider": settings.llm_provider,
                 "llm_model": settings.llm_model,
+                "speech_service_enabled": settings.speech_service_enabled,
+                "speech_service_base": settings.speech_service_base,
+                "vision_service_enabled": settings.vision_service_enabled,
+                "vision_service_base": settings.vision_service_base,
+                "avatar_service_enabled": settings.avatar_service_enabled,
+                "avatar_service_base": settings.avatar_service_base,
                 "log_dir": settings.log_dir,
             },
         )

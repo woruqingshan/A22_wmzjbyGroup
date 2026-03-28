@@ -1,0 +1,17 @@
+from fastapi import APIRouter
+
+from config import settings
+from models import HealthResponse
+
+router = APIRouter()
+
+
+@router.get("/health", response_model=HealthResponse)
+async def health() -> HealthResponse:
+    return HealthResponse(
+        status="ok",
+        extractor_mode=settings.extractor_mode,
+        vision_model=settings.vision_model,
+        vision_device=settings.vision_device,
+        frame_input_mode=settings.frame_input_mode,
+    )

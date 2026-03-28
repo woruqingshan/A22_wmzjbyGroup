@@ -19,6 +19,7 @@ export function createStatusBar() {
       <div><dt>Expression</dt><dd data-role="facial-expression"></dd></div>
       <div><dt>Motion</dt><dd data-role="head-motion"></dd></div>
       <div><dt>Audio</dt><dd data-role="audio-status"></dd></div>
+      <div><dt>Video</dt><dd data-role="video-status"></dd></div>
     </dl>
   `;
 
@@ -32,6 +33,7 @@ export function createStatusBar() {
     facialExpression: element.querySelector('[data-role="facial-expression"]'),
     headMotion: element.querySelector('[data-role="head-motion"]'),
     audioStatus: element.querySelector('[data-role="audio-status"]'),
+    videoStatus: element.querySelector('[data-role="video-status"]'),
   };
 
   return {
@@ -46,6 +48,7 @@ export function createStatusBar() {
       refs.facialExpression.textContent = snapshot.facialExpression;
       refs.headMotion.textContent = snapshot.headMotion;
       refs.audioStatus.textContent = snapshot.audioStatus;
+      refs.videoStatus.textContent = snapshot.videoStatus;
     },
   };
 }

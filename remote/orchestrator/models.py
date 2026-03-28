@@ -21,6 +21,8 @@ from contracts.schemas import (  # noqa: E402
     ErrorResponseSchema,
     SpeechFeaturesSchema,
     TurnTimeWindowSchema,
+    VideoFrameSchema,
+    VideoMetaSchema,
     VisionFeaturesSchema,
 )
 
@@ -30,6 +32,14 @@ class AudioMeta(AudioMetaSchema):
 
 
 class SpeechFeatures(SpeechFeaturesSchema):
+    pass
+
+
+class VideoFrame(VideoFrameSchema):
+    pass
+
+
+class VideoMeta(VideoMetaSchema):
     pass
 
 
@@ -43,6 +53,8 @@ class TurnTimeWindow(TurnTimeWindowSchema):
 
 class ChatRequest(ChatRequestSchema):
     audio_meta: AudioMeta | None = None
+    video_frames: list[VideoFrame] = Field(default_factory=list)
+    video_meta: VideoMeta | None = None
     speech_features: SpeechFeatures | None = None
     vision_features: VisionFeatures | None = None
     turn_time_window: TurnTimeWindow | None = None
