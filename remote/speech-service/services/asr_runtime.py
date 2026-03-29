@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Any
 
 from config import settings
 from models import AudioMeta, SpeechFeatures, TranscribeRequest, TranscribeResponse
@@ -11,11 +12,23 @@ from services.wav_utils import decode_audio_base64, decode_wav_audio
 
 class SpeechRuntime:
     def __init__(self) -> None:
-        self._pipeline = None
+        self._belle_pipeline = None
+        self._qwen_model = None
 
-    def _ensure_pipeline(self):
-        if self._pipeline is not None:
-            return self._pipeline
+    @staticmethod
+    def _is_cuda_device(device: str) -> bool:
+        return str(device).lower().startswith("cuda")
+
+    @staticmethod
+    def _normalize_provider(provider: str) -> str:
+        normalized = (provider or "").strip().lower()
+        if normalized in {"qwen3_asr", "qwen3-asr", "qwen_asr", "qwen"}:
+            return "qwen3_asr"
+        return "belle_whisper"
+
+    def _ensure_belle_pipeline(self):
+        if self._belle_pipeline is not None:
+            return self._belle_pipeline
 
         try:
             import torch
@@ -26,7 +39,7 @@ class SpeechRuntime:
         model_ref = settings.asr_model
         model_path = Path(model_ref)
         local_files_only = model_path.exists()
-        torch_dtype = torch.float16 if settings.asr_device.startswith("cuda") else torch.float32
+        torch_dtype = torch.float16 if self._is_cuda_device(settings.asr_device) else torch.float32
 
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_ref,
@@ -41,7 +54,7 @@ class SpeechRuntime:
             model_ref,
             local_files_only=local_files_only,
         )
-        self._pipeline = pipeline(
+        self._belle_pipeline = pipeline(
             "automatic-speech-recognition",
             model=model,
             tokenizer=processor.tokenizer,
@@ -49,13 +62,74 @@ class SpeechRuntime:
             torch_dtype=torch_dtype,
             device=settings.asr_device,
         )
-        self._pipeline.model.config.forced_decoder_ids = (
-            self._pipeline.tokenizer.get_decoder_prompt_ids(
+        self._belle_pipeline.model.config.forced_decoder_ids = (
+            self._belle_pipeline.tokenizer.get_decoder_prompt_ids(
                 language=settings.asr_language,
                 task="transcribe",
             )
         )
-        return self._pipeline
+        return self._belle_pipeline
+
+    def _ensure_qwen_model(self):
+        if self._qwen_model is not None:
+            return self._qwen_model
+
+        try:
+            import torch
+            from qwen_asr import Qwen3ASRModel
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError("Speech service requires qwen-asr for ASR_PROVIDER=qwen3_asr.") from exc
+
+        model_ref = settings.asr_model
+        model_path = Path(model_ref)
+        local_files_only = model_path.exists()
+
+        model_kwargs: dict[str, Any] = {
+            "torch_dtype": torch.bfloat16 if self._is_cuda_device(settings.asr_device) else torch.float32,
+            "device_map": "auto" if self._is_cuda_device(settings.asr_device) else settings.asr_device,
+            "trust_remote_code": True,
+        }
+        if local_files_only:
+            model_kwargs["local_files_only"] = True
+
+        self._qwen_model = Qwen3ASRModel.from_pretrained(
+            model_ref,
+            max_inference_batch_size=settings.asr_max_inference_batch_size,
+            max_new_tokens=settings.asr_max_new_tokens,
+            **model_kwargs,
+        )
+        return self._qwen_model
+
+    def _qwen_language(self) -> str | None:
+        language = (settings.asr_language or "").strip()
+        if not language:
+            return None
+
+        normalized = language.lower()
+        language_map = {
+            "zh": "Chinese",
+            "zh-cn": "Chinese",
+            "chinese": "Chinese",
+            "en": "English",
+            "english": "English",
+            "ja": "Japanese",
+            "japanese": "Japanese",
+            "ko": "Korean",
+            "korean": "Korean",
+        }
+        return language_map.get(normalized, language)
+
+    @staticmethod
+    def _extract_qwen_text(output: Any) -> str:
+        if not output:
+            return ""
+
+        candidate = output[0] if isinstance(output, list) else output
+        if hasattr(candidate, "text"):
+            return str(candidate.text or "").strip()
+        if isinstance(candidate, dict):
+            return str(candidate.get("text", "")).strip()
+        return str(candidate).strip()
 
     def warmup(self) -> None:
         if not settings.asr_warmup_enabled:
@@ -66,12 +140,18 @@ class SpeechRuntime:
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError("Speech service requires numpy.") from exc
 
-        pipeline_instance = self._ensure_pipeline()
+        provider = self._normalize_provider(settings.asr_provider)
+        if provider == "qwen3_asr":
+            qwen_model = self._ensure_qwen_model()
+            qwen_model.transcribe(
+                audio=(np.zeros(16000, dtype=np.float32), 16000),
+                language=self._qwen_language(),
+            )
+            return
+
+        pipeline_instance = self._ensure_belle_pipeline()
         pipeline_instance(
-            {
-                "raw": np.zeros(48000, dtype=np.float32),
-                "sampling_rate": 48000,
-            },
+            {"raw": np.zeros(48000, dtype=np.float32), "sampling_rate": 48000},
             generate_kwargs={"language": settings.asr_language, "task": "transcribe"},
         )
 
@@ -142,9 +222,12 @@ class SpeechRuntime:
                 source="remote_speech_service_metadata_only",
             )
 
+        provider = self._normalize_provider(settings.asr_provider)
+        text_source = "remote_qwen3_asr" if provider == "qwen3_asr" else "remote_belle_whisper"
+
         response = TranscribeResponse(
             transcript_text=transcript_text,
-            text_source="remote_belle_whisper",
+            text_source=text_source,
             transcript_confidence=None,
             audio_meta=audio_meta,
             speech_features=speech_features,
@@ -160,12 +243,18 @@ class SpeechRuntime:
         return response
 
     def _run_asr(self, audio_bytes: bytes, audio_meta: AudioMeta) -> str:
+        provider = self._normalize_provider(settings.asr_provider)
+        if provider == "qwen3_asr":
+            return self._run_qwen_asr(audio_bytes, audio_meta)
+        return self._run_belle_asr(audio_bytes, audio_meta)
+
+    def _run_belle_asr(self, audio_bytes: bytes, audio_meta: AudioMeta) -> str:
         try:
             import numpy as np
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError("Speech service requires numpy.") from exc
 
-        pipeline_instance = self._ensure_pipeline()
+        pipeline_instance = self._ensure_belle_pipeline()
         generate_kwargs = {"language": settings.asr_language, "task": "transcribe"}
 
         if (audio_meta.format or "wav").lower() == "wav":
@@ -194,6 +283,36 @@ class SpeechRuntime:
         else:
             text = str(result).strip()
 
+        return text or "Audio input received from the remote speech service."
+
+    def _run_qwen_asr(self, audio_bytes: bytes, audio_meta: AudioMeta) -> str:
+        try:
+            import numpy as np
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError("Speech service requires numpy.") from exc
+
+        qwen_model = self._ensure_qwen_model()
+        forced_language = self._qwen_language()
+
+        if (audio_meta.format or "wav").lower() == "wav":
+            decoded_audio = decode_wav_audio(audio_bytes)
+            if decoded_audio.channels == 1:
+                waveform = decoded_audio.samples_by_channel[0]
+            else:
+                waveform = [
+                    sum(channel_samples) / decoded_audio.channels
+                    for channel_samples in zip(*decoded_audio.samples_by_channel, strict=False)
+                ]
+            qwen_input = (np.asarray(waveform, dtype=np.float32), decoded_audio.sample_rate_hz)
+            result = qwen_model.transcribe(audio=qwen_input, language=forced_language)
+        else:
+            suffix = f".{(audio_meta.format or 'wav').lower()}"
+            with NamedTemporaryFile(suffix=suffix) as temp_audio:
+                temp_audio.write(audio_bytes)
+                temp_audio.flush()
+                result = qwen_model.transcribe(audio=temp_audio.name, language=forced_language)
+
+        text = self._extract_qwen_text(result)
         return text or "Audio input received from the remote speech service."
 
 
