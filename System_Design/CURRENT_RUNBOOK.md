@@ -153,7 +153,7 @@ Prepare the environment:
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/speech-service
 uv venv --python /usr/bin/python3.11 .venv
 source .venv/bin/activate
-uv pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
+uv sync
 ```
 
 Start speech-service on the GPU chosen for BELLE ASR:
@@ -181,7 +181,7 @@ Prepare and start:
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/vision-service
 uv venv --python /usr/bin/python3.11 .venv
 source .venv/bin/activate
-uv pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
+uv sync
 export VISION_EXTRACTOR_MODE=qwen2_5_vl
 export VISION_MODEL=/data/zifeng/siyuan/A22/models/Qwen2.5-VL-7B-Instruct
 export CUDA_VISIBLE_DEVICES=2
@@ -203,7 +203,7 @@ Prepare and start:
 cd /home/zifeng/siyuan/A22/A22_wmzjbyGroup/remote/avatar-service
 uv venv --python /usr/bin/python3.11 .venv
 source .venv/bin/activate
-uv pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
+uv sync
 git clone --recursive https://github.com/FunAudioLLM/CosyVoice.git /data/zifeng/siyuan/A22/models/CosyVoice
 export TTS_MODE=cosyvoice2_sft
 export TTS_MODEL=/data/zifeng/siyuan/A22/models/CosyVoice2-0.5B
@@ -223,6 +223,12 @@ Notes:
 cd /data/zifeng/siyuan/A22/models/CosyVoice
 git submodule update --init --recursive
 ```
+
+Compatibility note:
+
+- `pyproject.toml` is now the authoritative uv environment file for
+  `speech-service`, `vision-service`, and `avatar-service`
+- `requirements.txt` is retained as a compatibility fallback for non-uv flows
 
 Verify:
 
