@@ -9,7 +9,7 @@ def normalize_chat_request(
     request_id: str | None = None,
 ) -> RemoteChatRequest:
     user_text = (request.user_text or "").strip()
-    has_audio = bool(request.audio_base64)
+    has_audio = bool(request.audio_base64 or request.audio_chunks or request.audio_stream_event)
     input_type = request.input_type or "text"
 
     if user_text and has_audio:
@@ -66,6 +66,10 @@ def normalize_chat_request(
             audio_meta_payload.sample_rate_hz if audio_meta_payload else request.audio_sample_rate_hz
         ),
         audio_channels=audio_meta_payload.channels if audio_meta_payload else request.audio_channels,
+        audio_stream_id=request.audio_stream_id,
+        audio_stream_event=request.audio_stream_event,
+        audio_stream_sequence_id=request.audio_stream_sequence_id,
+        audio_chunks=request.audio_chunks,
         audio_meta=audio_meta_payload,
         video_frames=processed_video.video_frames,
         video_meta=processed_video.video_meta,

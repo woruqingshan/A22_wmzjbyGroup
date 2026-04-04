@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 
-from config import settings
 from models import TurnTimeWindow, VideoFrame, VideoMeta, VisionFeatures
-from services.media.frame_selector import select_key_frames
 from services.media.media_package_builder import merge_video_window
 
 
@@ -33,7 +31,8 @@ class VideoTurnService:
                 turn_time_window=turn_time_window,
             )
 
-        selected_frames = select_key_frames(video_frames, settings.local_video_frame_limit)
+        # M2: keep local edge as a pure relay and forward all frames from frontend.
+        forwarded_frames = video_frames.copy()
 
         if video_meta:
             if hasattr(video_meta, "model_copy"):
@@ -43,11 +42,13 @@ class VideoTurnService:
         else:
             normalized_meta = VideoMeta()
         normalized_meta.source = normalized_meta.source or "browser_camera"
-        normalized_meta.keyframe_strategy = normalized_meta.keyframe_strategy or "even_sampling"
-        normalized_meta.frame_count = video_meta.frame_count if video_meta and video_meta.frame_count else len(video_frames)
-        normalized_meta.sampled_frame_count = len(selected_frames)
+        normalized_meta.keyframe_strategy = normalized_meta.keyframe_strategy or "passthrough_no_local_sampling"
+        normalized_meta.frame_count = (
+            video_meta.frame_count if video_meta and video_meta.frame_count else len(forwarded_frames)
+        )
+        normalized_meta.sampled_frame_count = len(forwarded_frames)
 
-        updated_window = merge_video_window(turn_time_window, selected_frames)
+        updated_window = merge_video_window(turn_time_window, forwarded_frames)
 
         if primary_input_type == "audio":
             alignment_mode = "video_audio"
@@ -55,7 +56,7 @@ class VideoTurnService:
             alignment_mode = "video_text"
 
         return VideoTurnProcessResult(
-            video_frames=selected_frames,
+            video_frames=forwarded_frames,
             video_meta=normalized_meta,
             vision_features=None,
             alignment_mode=alignment_mode,

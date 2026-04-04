@@ -168,6 +168,9 @@ async function handleSend({ text, audio, video }) {
       meta: `${response.emotion_style} · ${response.avatar_action.facial_expression} / ${response.avatar_action.head_motion}`,
     });
     avatarPanel.update(response);
+    if (response.multimodal_result?.fusion_summary) {
+      chatPanel.addSystemMessage(`M5 multimodal: ${response.multimodal_result.fusion_summary}`);
+    }
     syncStatus({
       transport: "Remote reply received",
       remoteStatus: response.server_status === "ok" ? "Remote orchestrator connected" : "Remote orchestrator error",
@@ -227,3 +230,4 @@ function syncLayout() {
   leftTopStack.classList.toggle("camera-on", state.cameraEnabled);
   leftTopStack.classList.toggle("camera-off", !state.cameraEnabled);
 }
+

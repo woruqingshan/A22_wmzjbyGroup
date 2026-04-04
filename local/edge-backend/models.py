@@ -13,6 +13,7 @@ for candidate in SHARED_PATH_CANDIDATES:
         sys.path.append(str(candidate))
 
 from contracts.schemas import (  # noqa: E402
+    AudioChunkSchema,
     AudioMetaSchema,
     AvatarActionSchema,
     AvatarOutputSchema,
@@ -27,6 +28,10 @@ from contracts.schemas import (  # noqa: E402
 
 
 class AudioMeta(AudioMetaSchema):
+    pass
+
+
+class AudioChunk(AudioChunkSchema):
     pass
 
 
@@ -64,6 +69,10 @@ class ChatRequest(BaseModel):
     audio_duration_ms: int | None = Field(default=None, ge=0)
     audio_sample_rate_hz: int | None = Field(default=None, ge=1)
     audio_channels: int | None = Field(default=None, ge=1)
+    audio_stream_id: str | None = None
+    audio_stream_event: str | None = None
+    audio_stream_sequence_id: int | None = Field(default=None, ge=0)
+    audio_chunks: list[AudioChunk] = Field(default_factory=list)
     audio_meta: AudioMeta | None = None
     video_frames: list[VideoFrame] = Field(default_factory=list)
     video_meta: VideoMeta | None = None
@@ -87,6 +96,10 @@ class RemoteChatRequest(BaseModel):
     audio_duration_ms: int | None = Field(default=None, ge=0)
     audio_sample_rate_hz: int | None = Field(default=None, ge=1)
     audio_channels: int | None = Field(default=None, ge=1)
+    audio_stream_id: str | None = None
+    audio_stream_event: str | None = None
+    audio_stream_sequence_id: int | None = Field(default=None, ge=0)
+    audio_chunks: list[AudioChunk] = Field(default_factory=list)
     audio_meta: AudioMeta | None = None
     video_frames: list[VideoFrame] = Field(default_factory=list)
     video_meta: VideoMeta | None = None
@@ -116,4 +129,6 @@ class ErrorResponse(ErrorResponseSchema):
 class HealthResponse(BaseModel):
     status: str
     cloud_api_base: str
+    cloud_ws_chat_endpoint: str | None = None
+    remote_transport: str
     request_timeout_seconds: float
