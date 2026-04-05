@@ -49,3 +49,6 @@ class HealthResponse(BaseModel):
     tts_model: str
     tts_device: str
     tts_speaker_id: str
+    talkingface_enabled: bool
+    talkingface_provider: str
+    talkingface_base: str | None = None

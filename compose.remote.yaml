@@ -19,5 +19,51 @@ services:
     environment:
       ORCHESTRATOR_ENV: dev
       LOG_DIR: /workspace-logs/orchestrator
+      AVATAR_SERVICE_ENABLED: "true"
+      AVATAR_SERVICE_BASE: http://avatar-service:19300
+    networks:
+      - a22-net
+
+  avatar-service:
+    image: python:3.11-slim-bookworm
+    working_dir: /app
+    volumes:
+      - ./remote/avatar-service:/app
+      - ./shared:/shared
+      - ./logs:/workspace-logs
+      - ${MODEL_ROOT:-/root/autodl-tmp/a22/models}:/models
+      - ${TMP_ROOT:-/root/autodl-tmp/a22/tmp/avatar}:/tmp-avatar
+    command: >-
+      bash -lc "pip install --no-cache-dir -r requirements.txt &&
+      uvicorn app:app --host 0.0.0.0 --port 19300"
+    ports:
+      - "19300:19300"
+    environment:
+      AVATAR_ID: default-2d
+      AVATAR_RENDERER_MODE: parameterized_2d
+      AVATAR_TRANSPORT_MODE: http_poll
+      AVATAR_WEBSOCKET_ENDPOINT: /ws/avatar
+      TMP_DIR: /tmp-avatar
+      TTS_MODE: cosyvoice2_sft
+      TTS_MODEL: /models/Fun-CosyVoice3-0.5B-2512
+      TTS_REPO_PATH: /models/CosyVoice
+      TTS_DEVICE: cuda:0
+      TTS_SPEAKER_ID: 中文女
+      TTS_SPEED: "1.0"
+      TTS_WARMUP_ENABLED: "true"
+      TALKINGFACE_ENABLED: "false"
+      TALKINGFACE_PROVIDER: echomimic_v2
+      TALKINGFACE_BASE: http://host.docker.internal:19400
+      TALKINGFACE_GENERATE_PATH: /generate
+      TALKINGFACE_TIMEOUT_SECONDS: "120"
+      LOG_DIR: /workspace-logs/avatar-service
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True,max_split_size_mb:128
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     networks:
       - a22-net

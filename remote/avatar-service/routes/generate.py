@@ -4,6 +4,7 @@ from models import GenerateRequest, GenerateResponse
 from services.expression_generator import expression_generator
 from services.motion_generator import motion_generator
 from services.storage import avatar_storage
+from services.talkingface_client import talkingface_client
 from services.tts_runtime import tts_runtime
 from services.viseme_generator import viseme_generator
 from config import settings
@@ -18,6 +19,13 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         session_id=request.session_id,
         turn_id=request.turn_id,
         text=request.reply_text,
+    )
+    talkingface_result = talkingface_client.generate(
+        session_id=request.session_id,
+        turn_id=request.turn_id,
+        audio_url=reply_audio_url,
+        reply_text=request.reply_text,
+        emotion_style=request.emotion_style,
     )
 
     avatar_output = {
@@ -34,6 +42,19 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             "mime_type": "audio/wav" if reply_audio_url else None,
             "duration_ms": estimated_duration_ms if reply_audio_url else None,
             "cache_key": f"{request.session_id}:{request.turn_id}:tts" if reply_audio_url else None,
+        },
+        "video": {
+            "video_url": talkingface_result.video_url,
+            "mime_type": talkingface_result.mime_type if talkingface_result.video_url else None,
+            "duration_ms": talkingface_result.duration_ms,
+            "fps": talkingface_result.fps,
+            "width": talkingface_result.width,
+            "height": talkingface_result.height,
+            "cache_key": (
+                f"{request.session_id}:{request.turn_id}:echomimic"
+                if talkingface_result.video_url
+                else None
+            ),
         },
         "viseme_seq": viseme_generator.generate(
             text=request.reply_text,

@@ -16,4 +16,7 @@ async def health() -> HealthResponse:
         tts_model=settings.tts_model,
         tts_device=settings.tts_device,
         tts_speaker_id=settings.tts_speaker_id,
+        talkingface_enabled=settings.talkingface_enabled,
+        talkingface_provider=settings.talkingface_provider,
+        talkingface_base=settings.talkingface_base if settings.talkingface_enabled else None,
     )

@@ -161,6 +161,16 @@ class AvatarAudioCueSchema(BaseModel):
     cache_key: str | None = None
 
 
+class AvatarVideoCueSchema(BaseModel):
+    video_url: str | None = None
+    mime_type: str | None = None
+    duration_ms: int | None = Field(default=None, ge=0)
+    fps: float | None = Field(default=None, ge=0.0)
+    width: int | None = Field(default=None, ge=1)
+    height: int | None = Field(default=None, ge=1)
+    cache_key: str | None = None
+
+
 class VisemeCueSchema(BaseModel):
     start_ms: int = Field(..., ge=0)
     end_ms: int = Field(..., ge=0)
@@ -192,6 +202,7 @@ class AvatarOutputSchema(BaseModel):
     avatar_id: str | None = None
     emotion_style: str | None = None
     audio: AvatarAudioCueSchema | None = None
+    video: AvatarVideoCueSchema | None = None
     viseme_seq: list[VisemeCueSchema] = Field(default_factory=list)
     expression_seq: list[ExpressionCueSchema] = Field(default_factory=list)
     motion_seq: list[MotionCueSchema] = Field(default_factory=list)
@@ -215,4 +226,3 @@ class ChatResponseSchema(BaseModel):
 
 class ErrorResponseSchema(BaseModel):
     detail: str
-

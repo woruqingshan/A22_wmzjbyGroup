@@ -26,6 +26,21 @@ class Settings:
             "yes",
             "on",
         }
+        self.talkingface_provider = os.getenv("TALKINGFACE_PROVIDER", "echomimic_v2").strip().lower() or "echomimic_v2"
+        self.talkingface_enabled = os.getenv("TALKINGFACE_ENABLED", "false").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.talkingface_base = (
+            os.getenv("TALKINGFACE_BASE", "http://127.0.0.1:19400").strip().rstrip("/")
+            or "http://127.0.0.1:19400"
+        )
+        self.talkingface_generate_path = os.getenv("TALKINGFACE_GENERATE_PATH", "/generate").strip() or "/generate"
+        self.talkingface_timeout_seconds = float(os.getenv("TALKINGFACE_TIMEOUT_SECONDS", "120"))
+        self.talkingface_avatar_ref = os.getenv("TALKINGFACE_AVATAR_REF", "").strip()
+        self.talkingface_pose = os.getenv("TALKINGFACE_POSE", "01").strip() or "01"
 
 
 settings = Settings()
